@@ -1,17 +1,31 @@
-# React + Vite
+# i-WASTE Community Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A frontend-only React SPA for resident waste collection, route tracking, environmental service requests, recyclable sales, and clean-up events. The app opens directly on the dashboard and has no authentication flow.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```sh
+npm install
+npm run dev
+```
 
-## React Compiler
+Open the local URL printed by Vite. The production bundle can be checked with:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```sh
+npm run build
+npm run preview
+```
 
-## Expanding the ESLint configuration
+## Project layout
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `src/App.jsx` — React Router setup for the dashboard and service pages.
+- `frontend/Home.jsx` — resident dashboard, map entry points, and service shortcuts.
+- `frontend/Module3PickupPage.jsx` — unified normal waste, special waste, and cooking-oil pickup request.
+- `frontend/Module4TreeWaterwayPage.jsx` — tree maintenance and public waterway-cleaning requests.
+- `frontend/Module5RecyclablesPage.jsx` — recyclable materials sale and pickup/drop-off request.
+- `src/components/ServicePageLayout.jsx` — service-module tabs, attachment controls, and request status confirmation.
+- `src/components/RouteMap.jsx` — Leaflet/OpenStreetMap collection map.
+- `src/services/api.js` — asynchronous mock API methods and typed JSON request payloads.
+- `src/utils/validation.js` — allowlist-based validation for search and service request inputs.
 
+The mock dashboard refreshes its data timestamp every 30 seconds. Search, event participation, and service requests use local mock services and do not send data to a server. Selected attachments are validated in the browser; the mock service records their metadata only and does not upload or persist file contents. Recyclable valuation and volume are indicative demo estimates, not official junkshop rates. Client-side checks are for input quality and user experience only; a future backend must independently validate inputs, use parameterized database queries, and handle file storage securely.
