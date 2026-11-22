@@ -3,19 +3,19 @@ import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap, ZoomC
 import 'leaflet/dist/leaflet.css'
 
 const ROUTE_POINTS = [
-  [14.6114, 120.9898],
-  [14.6078, 120.9893],
-  [14.6047, 120.9847],
-  [14.6012, 120.9843],
-  [14.5983, 120.9877],
-  [14.595, 120.9895],
+  [14.7016, 121.1122],
+  [14.7005, 121.1104],
+  [14.699, 121.1074],
+  [14.6976, 121.1106],
+  [14.6958, 121.112],
+  [14.6936, 121.1106],
 ]
 
 const CHECKPOINTS = [
-  { position: ROUTE_POINTS[0], name: 'Sampaloc checkpoint' },
-  { position: ROUTE_POINTS[2], name: 'Rizal Street checkpoint' },
-  { position: ROUTE_POINTS[4], name: 'Quiapo checkpoint' },
-  { position: ROUTE_POINTS[5], name: 'San Miguel checkpoint' },
+  { position: ROUTE_POINTS[0], name: 'Bagong Silangan north checkpoint' },
+  { position: ROUTE_POINTS[2], name: 'Bagong Silangan central checkpoint' },
+  { position: ROUTE_POINTS[4], name: 'Bagong Silangan south checkpoint' },
+  { position: ROUTE_POINTS[5], name: 'Bagong Silangan east checkpoint' },
 ]
 
 const TRUCK_POSITION = ROUTE_POINTS[2]
@@ -52,8 +52,8 @@ export default function RouteMap() {
     <div className="route-map-shell" role="region" aria-label="Interactive collection route map">
       <MapContainer
         className="route-map"
-        center={[14.6035, 120.9865]}
-        zoom={14}
+        center={[14.6987, 121.1095]}
+        zoom={15}
         minZoom={12}
         maxZoom={19}
         scrollWheelZoom={false}
@@ -84,7 +84,7 @@ export default function RouteMap() {
           <Tooltip permanent direction="right" offset={[12, 0]} opacity={1}>
             <span className="map-route-tooltip">
               <strong>Route B-12</strong>
-              <small>Next: Rizal St. · ETA 2 mins</small>
+              <small>Next: Bagong Silangan · ETA 2 mins</small>
             </span>
           </Tooltip>
         </CircleMarker>

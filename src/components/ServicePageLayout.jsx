@@ -1,4 +1,5 @@
-import { Link, NavLink } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
+import SiteNavbar from './SiteNavbar.jsx'
 
 const SERVICE_MODULES = [
   { label: 'Waste & oil pickup', to: '/pickup' },
@@ -11,13 +12,7 @@ const REQUEST_STATUSES = ['Submitted', 'Under Review', 'Scheduled', 'In Progress
 export default function ServicePageLayout({ module, title, description, children }) {
   return (
     <div className="service-app">
-      <header className="service-site-header">
-        <Link className="service-brand" to="/">
-          <span aria-hidden="true">♻</span>
-          <strong>i-WASTE</strong>
-        </Link>
-        <Link className="service-home-link" to="/">Back to resident home</Link>
-      </header>
+      <SiteNavbar />
       <main className="service-main">
         <section className="service-intro">
           <p className="service-overline">
