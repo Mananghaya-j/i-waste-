@@ -1,38 +1,28 @@
 import { useState } from 'react'
-import { createRecyclablesRequest, estimateRecyclables } from '../src/services/api.js'
-import ServicePageLayout, { FileUpload, ServiceSuccess } from '../src/components/ServicePageLayout.jsx'
+import { createRecyclablesRequest } from '../src/services/api.js'
+import { ServicePageLayout, FileUpload, ServiceSuccess } from './ServiceShared.jsx'
 
+const makeMaterial = (materialType = 'Plastic') => ({ id: `${Date.now()}-${Math.random()}`, materialType, otherMaterialType: '', volumeLiters: '' })
 const EMPTY_FORM = {
-  fullName: '',
-  contactNumber: '',
-  materialType: 'Plastic',
-  estimatedWeight: '',
-  photos: [],
-  pickupAddress: '',
-  fulfillment: 'Pickup',
-  preferredDate: '',
+  fullName: '', contactNumber: '', materials: [makeMaterial()], photos: [], pickupAddress: '',
+  fulfillment: 'Pickup', preferredDate: '',
 }
-
-const MATERIAL_TYPES = ['Plastic', 'Paper', 'Cardboard', 'Glass', 'Metal', 'Aluminum', 'Electronic Waste']
-
-function formatPeso(value) {
-  return new Intl.NumberFormat('en-PH', {
-    style: 'currency',
-    currency: 'PHP',
-    maximumFractionDigits: 2,
-  }).format(value)
-}
+const MATERIAL_TYPES = ['Plastic', 'Paper', 'Cardboard', 'Glass', 'Metal', 'Aluminum', 'Electronic Waste', 'Other']
 
 export default function RecyclablesPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [request, setRequest] = useState(null)
-  const estimate = estimateRecyclables(form)
 
   function updateField(event) {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
+    setError('')
+  }
+
+  function updateMaterial(index, field, value) {
+    setForm((current) => ({ ...current, materials: current.materials.map((item, i) => i === index ? { ...item, [field]: value } : item) }))
     setError('')
   }
 
@@ -50,97 +40,50 @@ export default function RecyclablesPage() {
   }
 
   function resetForm() {
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, materials: [makeMaterial()] })
     setRequest(null)
     setError('')
   }
 
-  const successDetail = request?.estimate
-    ? `Your ${request.materialType.toLowerCase()} request was received. The demo estimate is ${formatPeso(request.estimate.estimatedValue)} for about ${request.estimate.estimatedVolumeLiters} liters.`
-    : 'Your recyclable materials request was received. Add an estimated weight next time to see a demo valuation.'
+  const successDetail = request?.materials?.length
+    ? `Your request for ${request.materials.map((item) => `${item.materialType === 'Other' ? item.otherMaterialType : item.materialType} (${item.volumeLiters} L)`).join(', ')} was received.`
+    : 'Your recyclable materials request was received.'
+  const hasAvailableMaterialType = form.materials.length < MATERIAL_TYPES.length
 
   return (
-    <ServicePageLayout
-      module="MODULE 5"
-      title="Sell recyclable materials"
-      description="Tell us what sorted materials you have, add photos, and choose pickup or drop-off. You’ll receive a reference and an indicative estimate."
-    >
+    <ServicePageLayout showBack={!request} title="Sell recyclable materials">
       {request ? (
-        <ServiceSuccess
-          request={request}
-          title="Recyclables request submitted"
-          detail={successDetail}
-          onReset={resetForm}
-        />
+        <ServiceSuccess request={request} title="Recyclables request submitted" detail={successDetail} onReset={resetForm} />
       ) : (
         <form className="service-form-card service-form" onSubmit={handleSubmit} noValidate>
-          <div className="service-form-heading">
-            <div><p className="service-overline">RECYCLABLE MATERIALS</p><h2>Arrange a sale or collection</h2></div>
-            <span className="required-note"><i>*</i> Required fields</span>
-          </div>
-
           <section className="service-form-section" aria-labelledby="recyclables-contact-title">
-            <div className="service-section-heading">
-              <span>01</span><div><h3 id="recyclables-contact-title">Your contact details</h3><p>Leave your name blank if you prefer; a contact number is required for follow-up.</p></div>
-            </div>
+            <div className="service-section-heading"><span>01</span><div><h3 id="recyclables-contact-title">Your contact details</h3></div></div>
             <div className="service-fields-grid">
-              <label className="service-field">
-                <span>Name <small>Optional</small></span>
-                <input name="fullName" autoComplete="name" maxLength={60} placeholder="Leave blank if preferred" value={form.fullName} onChange={updateField} />
-              </label>
-              <label className="service-field">
-                <span>Contact number <i>Required</i></span>
-                <input name="contactNumber" type="tel" autoComplete="tel" maxLength={20} placeholder="+63 9XX XXX XXXX" value={form.contactNumber} onChange={updateField} required />
-              </label>
+              <label className="service-field"><span>Name <small>Optional</small></span><input name="fullName" autoComplete="name" maxLength={60} placeholder="Enter your name (optional)" value={form.fullName} onChange={updateField} /></label>
+              <label className="service-field"><span>Contact number <i aria-hidden="true">*</i></span><input name="contactNumber" type="tel" autoComplete="tel" maxLength={20} placeholder="+63 9XX XXX XXXX" value={form.contactNumber} onChange={updateField} required /></label>
             </div>
           </section>
 
           <section className="service-form-section" aria-labelledby="recyclables-material-title">
-            <div className="service-section-heading">
-              <span>02</span><div><h3 id="recyclables-material-title">Material details</h3><p>Choose the closest material category and estimate its weight if you can.</p></div>
-            </div>
-            <div className="service-fields-grid">
-              <label className="service-field">
-                <span>Material type <i>Required</i></span>
-                <select name="materialType" value={form.materialType} onChange={updateField}>
-                  {MATERIAL_TYPES.map((type) => <option key={type}>{type}</option>)}
-                </select>
-              </label>
-              <label className="service-field">
-                <span>Estimated weight (kg) <small>Optional</small></span>
-                <input name="estimatedWeight" type="number" min="0.1" max="10000" step="0.1" inputMode="decimal" placeholder="e.g. 5" value={form.estimatedWeight} onChange={updateField} />
-              </label>
-              <FileUpload
-                id="recyclables-photos"
-                label="Photos of recyclable materials"
-                multiple
-                required
-                value={form.photos}
-                help="Add 1–5 JPG, PNG, or WebP photos (up to 5 MB each)."
-                onChange={(photos) => {
-                  setForm((current) => ({ ...current, photos }))
-                  setError('')
-                }}
-              />
-            </div>
-            <aside className="recyclables-estimate" aria-live="polite">
-              <span className="estimate-leaf" aria-hidden="true">♻</span>
-              <div>
-                <strong>Estimated volume & value</strong>
-                {estimate ? (
-                  <p>{estimate.estimatedVolumeLiters} L <span>·</span> {formatPeso(estimate.estimatedValue)} <small>demo estimate</small></p>
-                ) : (
-                  <p>Add an estimated weight to calculate an indicative amount.</p>
-                )}
+            <div className="service-section-heading"><span>02</span><div><h3 id="recyclables-material-title">Material details</h3></div></div>
+            {form.materials.map((material, index) => (
+              <div className="service-fields-grid" key={material.id}>
+                <label className="service-field"><span>Material type <i aria-hidden="true">*</i></span><select value={material.materialType} onChange={(event) => updateMaterial(index, 'materialType', event.target.value)}>{MATERIAL_TYPES.map((type) => <option key={type} disabled={form.materials.some((item, itemIndex) => itemIndex !== index && item.materialType === type)}>{type}</option>)}</select></label>
+                {material.materialType === 'Other' && <label className="service-field"><span>Other material type <i aria-hidden="true">*</i></span><input maxLength={60} placeholder="Describe the material" value={material.otherMaterialType} onChange={(event) => updateMaterial(index, 'otherMaterialType', event.target.value)} required /></label>}
+                <div className="material-volume-control">
+                  <label className="service-field"><span>Volume (liters) <i aria-hidden="true">*</i></span><input type="number" min="0.1" max="100000" step="0.1" inputMode="decimal" placeholder="e.g. 20" value={material.volumeLiters} onChange={(event) => updateMaterial(index, 'volumeLiters', event.target.value)} required /></label>
+                  {form.materials.length > 1 && <button className="material-remove-button" type="button" aria-label={`Delete ${material.materialType === 'Other' && material.otherMaterialType ? material.otherMaterialType : material.materialType} material`} title="Delete material" onClick={() => setForm((current) => current.materials.length <= 1 ? current : { ...current, materials: current.materials.filter((_, i) => i !== index) })}><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6" /></svg></button>}
+                </div>
               </div>
-              <small>Indicative only; final valuation is confirmed by the receiving junkshop.</small>
-            </aside>
+            ))}
+            <button className="material-add-button" type="button" disabled={!hasAvailableMaterialType} onClick={() => setForm((current) => {
+              const nextType = MATERIAL_TYPES.find((type) => !current.materials.some((item) => item.materialType === type))
+              return nextType ? { ...current, materials: [...current.materials, makeMaterial(nextType)] } : current
+            })}>+ Add another material</button>
           </section>
 
           <section className="service-form-section" aria-labelledby="recyclables-schedule-title">
-            <div className="service-section-heading">
-              <span>03</span><div><h3 id="recyclables-schedule-title">Pickup or drop-off</h3><p>Choose how and when you’d like to hand over the materials.</p></div>
-            </div>
+            <div className="service-section-heading"><span>03</span><div><h3 id="recyclables-schedule-title">Pickup or drop-off</h3></div></div>
             <div className="service-choice-grid service-choice-grid--two">
               {['Pickup', 'Drop-off'].map((option) => (
                 <label className={`service-choice-card${form.fulfillment === option ? ' service-choice-card--selected' : ''}`} key={option}>
@@ -149,14 +92,15 @@ export default function RecyclablesPage() {
                 </label>
               ))}
             </div>
-
+            {form.fulfillment === 'Pickup' && (
+              <div className="service-fields-grid">
+                <label className="service-field service-field--full"><span>Pickup address <i aria-hidden="true">*</i></span><textarea name="pickupAddress" autoComplete="street-address" maxLength={160} placeholder="Street, house or building number, and barangay" value={form.pickupAddress} onChange={updateField} required rows={3} /></label>
+                <FileUpload id="recyclables-photos" label="Photos of recyclable materials" multiple required value={form.photos} help="Add 1–5 JPG, PNG, or WebP photos (up to 5 MB each)." onChange={(photos) => { setForm((current) => ({ ...current, photos })); setError('') }} />
+              </div>
+            )}
           </section>
-
           {error && <p className="service-form-error" role="alert">{error}</p>}
-          <div className="service-submit-row">
-            <p>Submitting creates a request reference; the demo estimate is not a guaranteed offer.</p>
-            <button className="service-submit-button" type="submit" disabled={submitting}>{submitting ? 'Submitting request…' : 'Submit recyclable request'}</button>
-          </div>
+          <div className="service-submit-row"><p>Enter each recyclable material and its estimated volume.</p><button className="service-submit-button" type="submit" disabled={submitting}>{submitting ? 'Submitting request…' : 'Submit recyclable request'}</button></div>
         </form>
       )}
     </ServicePageLayout>

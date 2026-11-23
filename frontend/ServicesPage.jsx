@@ -1,313 +1,210 @@
-import { useState } from 'react'
-import { createTreeMaintenanceRequest, createWaterwayCleaningRequest } from '../src/services/api.js'
-import ServicePageLayout, { FileUpload, ServiceSuccess } from '../src/components/ServicePageLayout.jsx'
+import { Link } from 'react-router-dom'
+import { SERVICES, ServiceIcon, ServicePageLayout } from './ServiceShared.jsx'
+import managementLogo from '../src/assets/managementLogo.jpg'
 
-const EMPTY_TREE_FORM = {
-  fullName: '',
-  contactNumber: '',
-  location: '',
-  landClassification: 'private',
-  requestType: 'pruning',
-  treeType: '',
-  hazardDescription: '',
-  denrDocument: null,
-  denrDocumentReference: '',
-  photo: null,
-  instructionsAccepted: false,
+const STEPS = [
+  { title: 'Choose a service', text: 'Pick the request that matches what you need.' },
+  { title: 'Fill in the form', text: 'Add your contact details, location, and a clear photo.' },
+  { title: 'Track your request', text: 'Use your reference number to follow its status.' },
+]
+
+const HERO_STYLES = `
+.sv-hero {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  min-height: 340px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #a9d79a 0%, #7cc072 55%, #5fae62 100%);
+  color: #0b3d24;
 }
-
-const EMPTY_WATERWAY_FORM = {
-  fullName: '',
-  contactNumber: '',
-  location: '',
-  issueType: 'Canal or waterway cleaning',
-  description: '',
-  photo: null,
+.sv-hero-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
+.sv-hero-inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 56px 24px;
+  box-sizing: border-box;
+}
+.sv-hero h1 {
+  margin: 0 0 14px;
+  max-width: 520px;
+  font-size: clamp(32px, 5vw, 56px);
+  line-height: 1.08;
+  font-weight: 800;
+}
+.sv-hero p {
+  margin: 0;
+  max-width: 480px;
+  font-size: clamp(16px, 2vw, 20px);
+  line-height: 1.4;
+  font-weight: 500;
+  color: #124a2d;
+}
+.sv-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 24px;
+  min-height: 48px;
+  padding: 0 28px;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+.sv-hero-cta:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 
-export default function ServicesPage() {
-  const [serviceType, setServiceType] = useState('tree')
+@media (max-width: 820px) {
+  .sv-hero-art { opacity: .55; }
+  .sv-hero-inner { padding: 40px 16px; }
+}
+`
 
+function HeroArt() {
+  const outline = { fill: 'none', stroke: '#3f8f4f', strokeWidth: 2, strokeLinecap: 'round', opacity: 0.55 }
+  const pin = (x, y) => (
+    <g transform={`translate(${x} ${y})`}>
+      <path d="M0 0c-9-12-12-16-12-22a12 12 0 1 1 24 0c0 6-3 10-12 22Z" fill="#2f7d46" />
+      <circle cy="-22" r="4.5" fill="#bfe5b0" />
+    </g>
+  )
   return (
-    <ServicePageLayout
-      module=""
-      title="Tree maintenance & waterway cleaning"
-      description="Request help with a tree on your land or a public drainage and waterway concern. Each request receives its own trackable ticket."
-    >
-      <section className="service-guidance-card" aria-labelledby="module4-guidance-title">
-        <span className="guidance-mark" aria-hidden="true">i</span>
-        <div>
-          <h2 id="module4-guidance-title">Before you submit a request</h2>
-          <p>Tree cutting on private or own land may require DENR approval or a Certificate of No Objection. Check the applicable requirements before submitting; attach the document when you have it. Waterway requests are for public canals, drainage, and waterways.</p>
+    <svg className="sv-hero-art" viewBox="0 0 1200 360" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+      {/* soft background blobs */}
+      <path d="M520 360C560 250 700 230 800 270s130 80 120 90Z" fill="#6fb667" opacity=".55" />
+      <path d="M940 0c-60 70-30 150 40 180s150 20 220-30V0Z" fill="#5aa85d" opacity=".5" />
+
+      {/* street map, right */}
+      <g transform="translate(900 40)">
+        <rect width="300" height="320" rx="0" fill="#74bb6c" opacity=".6" />
+        <g fill="#8fcb82" opacity=".9">
+          <rect x="14" y="14" width="80" height="70" rx="10" />
+          <rect x="110" y="14" width="70" height="110" rx="10" />
+          <rect x="196" y="14" width="90" height="60" rx="10" />
+          <rect x="14" y="100" width="80" height="90" rx="10" />
+          <rect x="196" y="90" width="90" height="100" rx="10" />
+          <rect x="14" y="206" width="110" height="100" rx="10" />
+          <rect x="140" y="140" width="40" height="166" rx="10" />
+          <rect x="196" y="206" width="90" height="100" rx="10" />
+        </g>
+        <image href={managementLogo} x="211" y="216" width="60" height="60" preserveAspectRatio="xMidYMid meet" style={{ mixBlendMode: 'multiply' }} />
+        {pin(60, 70)}{pin(150, 120)}{pin(250, 60)}{pin(225, 175)}{pin(70, 250)}
+        <circle cx="150" cy="215" r="6" fill="#f2994a" />
+      </g>
+
+      {/* recycling bin */}
+      <g transform="translate(560 120)">
+        <path d="M0 60h250l-24 170a14 14 0 0 1-14 12H38a14 14 0 0 1-14-12Z" fill="#3a9b57" />
+        <path d="M0 60h250l-8 56H8Z" fill="#2f8a4c" />
+        <rect x="-10" y="42" width="270" height="22" rx="10" fill="#1f6b3a" />
+        {/* recycle symbol */}
+        <g transform="translate(125 160) scale(1.7)" stroke="#e8f6df" strokeWidth="6" strokeLinecap="round" fill="none">
+          {[0, 120, 240].map((deg) => (
+            <g key={deg} transform={`rotate(${deg})`}>
+              <path d="M-22 12 L-9 -10" />
+              <polygon points="-5,-17 -5.2,-6.8 -13.8,-11.8" fill="#e8f6df" strokeWidth="2" />
+            </g>
+          ))}
+        </g>
+        {/* items on top */}
+        <g transform="translate(20 -30)">
+          <rect x="0" y="0" width="34" height="48" rx="8" fill="#f4d35e" />
+          <rect x="0" y="12" width="34" height="8" fill="#e0b93a" />
+        </g>
+        <g transform="translate(150 -60)">
+          <path d="M12 0h14v22c10 8 14 20 14 34v38H0V56c0-14 4-26 12-34Z" fill="#2f7d46" />
+          <rect x="10" y="-6" width="18" height="10" rx="3" fill="#1f6b3a" />
+        </g>
+        <g transform="translate(75 -8) rotate(-12)">
+          <rect width="70" height="46" rx="4" fill="#eaf5dc" />
+          <path d="M8 12h54M8 22h54M8 32h34" stroke="#8cc57f" strokeWidth="3" strokeLinecap="round" />
+        </g>
+      </g>
+
+      {/* leaf line art */}
+      <g {...outline}>
+        <path d="M470 330c-10-60 10-110 50-140 20 60 5 120-50 140Z" />
+        <path d="M470 330c15-45 30-80 50-140" />
+        <path d="M850 340c10-50-5-90-40-115-18 50-10 95 40 115Z" />
+        <path d="M850 340c-10-35-22-68-40-115" />
+        <path d="M380 340c-5-35 5-65 30-85 12 40 2 75-30 85Z" />
+      </g>
+    </svg>
+  )
+}
+
+function ServicesHero() {
+  return (
+    <>
+      <style>{HERO_STYLES}</style>
+      <section className="sv-hero" aria-labelledby="sv-hero-title">
+        <HeroArt />
+        <div className="sv-hero-inner">
+          <h1 id="sv-hero-title">Waste management, made simple.</h1>
+          <p>Request pickups, report issues, and sell recyclables, all in one place for Barangay Bagong Silangan.</p>
+          <a className="sv-hero-cta" href="#sv-services">Get started</a>
         </div>
       </section>
+    </>
+  )
+}
 
-      <div className="service-type-tabs" aria-label="Module 4 request type">
-        <button type="button" aria-pressed={serviceType === 'tree'} onClick={() => setServiceType('tree')}>
-          <strong>Tree maintenance</strong><span>Cutting, pruning, or hazards</span>
-        </button>
-        <button type="button" aria-pressed={serviceType === 'waterway'} onClick={() => setServiceType('waterway')}>
-          <strong>Waterway cleaning</strong><span>Canals, drainage, and clogs</span>
-        </button>
+// Hub: the resident picks a service first. Each card opens its own page.
+export default function ServicesPage() {
+  return (
+    <ServicePageLayout>
+      <ServicesHero />
+
+      <section className="sv-process" aria-labelledby="sv-process-title">
+        <div className="sv-process-heading">
+          <p>HOW IT WORKS</p>
+        </div>
+        <ol className="sv-steps" aria-label="How requests work">
+          {STEPS.map((step, index) => (
+            <li key={step.title}>
+              <span className="sv-step-num" aria-hidden="true">{index + 1}</span>
+              <div><strong>{step.title}</strong><span>{step.text}</span></div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="sv-request-list" aria-labelledby="sv-services-title">
+        <div className="sv-request-heading">
+          <div><h2 id="sv-services-title">What do you need help with?</h2></div>
+          <span>Choose a service to get started</span>
+        </div>
+      <div id="sv-services" className="sv-hub-grid">
+        {SERVICES.map((service) => (
+          <Link key={service.id} to={service.to} className="sv-card" aria-label={`${service.title}. ${service.description}`}>
+            <div className="sv-card-top">
+              <span className="sv-card-icon"><ServiceIcon name={service.icon} size={30} /></span>
+            </div>
+            <div>
+              <h2>{service.title}</h2>
+              <p>{service.description}</p>
+            </div>
+            <ul className="sv-tags" aria-label="Includes">
+              {service.tags.map((tag) => <li key={tag}>{tag}</li>)}
+            </ul>
+            <div className="sv-card-foot">
+              <span className="sv-card-needs"><b>You'll need:</b> {service.needs}</span>
+              <span className="sv-card-go">Start request<ServiceIcon name="arrow" size={16} /></span>
+            </div>
+          </Link>
+        ))}
       </div>
-
-      {serviceType === 'tree' ? <TreeMaintenanceForm /> : <WaterwayCleaningForm />}
+      </section>
     </ServicePageLayout>
-  )
-}
-
-function TreeMaintenanceForm() {
-  const [form, setForm] = useState(EMPTY_TREE_FORM)
-  const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [request, setRequest] = useState(null)
-
-  function updateField(event) {
-    const { name, value, type, checked } = event.target
-    setForm((current) => ({ ...current, [name]: type === 'checkbox' ? checked : value }))
-    setError('')
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault()
-    setError('')
-    setSubmitting(true)
-    try {
-      setRequest(await createTreeMaintenanceRequest(form))
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Tree maintenance request could not be submitted.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  function resetForm() {
-    setForm(EMPTY_TREE_FORM)
-    setRequest(null)
-    setError('')
-  }
-
-  return request ? (
-    <ServiceSuccess
-      request={request}
-      title="Tree service ticket created"
-      detail="Your tree location, request details, and photo evidence have been recorded by the demo service."
-      onReset={resetForm}
-    />
-  ) : (
-    <form className="service-form-card service-form" onSubmit={handleSubmit} noValidate>
-      <div className="service-form-heading">
-        <div><p className="service-overline">LAND / TREE REQUEST</p><h2>Tree cutting, pruning, or hazard report</h2></div>
-        <span className="required-note"><i>*</i> Required fields</span>
-      </div>
-
-      <label className="service-acknowledgement">
-        <input type="checkbox" name="instructionsAccepted" checked={form.instructionsAccepted} onChange={updateField} required />
-        <span>I have read the tree service instructions and will provide DENR approval or a Certificate of No Objection when required.</span>
-      </label>
-
-      <section className="service-form-section" aria-labelledby="tree-requester-title">
-        <div className="service-section-heading">
-          <span>01</span><div><h3 id="tree-requester-title">Your details</h3><p>We may contact you to confirm access or safety information.</p></div>
-        </div>
-        <div className="service-fields-grid">
-          <label className="service-field">
-            <span>Name <small>Optional</small></span>
-            <input name="fullName" autoComplete="name" maxLength={60} placeholder="Leave blank if preferred" value={form.fullName} onChange={updateField} />
-          </label>
-          <label className="service-field">
-            <span>Contact number <i>Required</i></span>
-            <input name="contactNumber" type="tel" autoComplete="tel" maxLength={20} placeholder="+63 9XX XXX XXXX" value={form.contactNumber} onChange={updateField} required />
-          </label>
-        </div>
-      </section>
-
-      <section className="service-form-section" aria-labelledby="tree-location-title">
-        <div className="service-section-heading">
-          <span>02</span><div><h3 id="tree-location-title">Tree and land details</h3><p>Give the exact location and tell us what work is needed.</p></div>
-        </div>
-        <div className="service-fields-grid">
-          <label className="service-field service-field--full">
-            <span>Exact tree location or address <i>Required</i></span>
-            <textarea name="location" rows={2} maxLength={160} placeholder="Street, landmark, barangay" value={form.location} onChange={updateField} required />
-          </label>
-          <label className="service-field">
-            <span>Land classification <i>Required</i></span>
-            <select name="landClassification" value={form.landClassification} onChange={updateField}>
-              <option value="private">Private / own land</option>
-              <option value="public">Public area</option>
-            </select>
-          </label>
-          <label className="service-field">
-            <span>Request type <i>Required</i></span>
-            <select name="requestType" value={form.requestType} onChange={updateField}>
-              <option value="pruning">Tree pruning</option>
-              <option value="cutting">Tree cutting / removal</option>
-            </select>
-          </label>
-          <label className="service-field">
-            <span>Tree type <small>If known</small></span>
-            <input name="treeType" maxLength={60} placeholder="Optional" value={form.treeType} onChange={updateField} />
-          </label>
-          <div className="service-field">
-            <span>DENR approval / Certificate of No Objection <small>When applicable</small></span>
-            <FileUpload
-              id="tree-denr-document"
-              label="Attach an approval document"
-              accept=".pdf,image/jpeg,image/png,image/webp,application/pdf"
-              value={form.denrDocument}
-              help="PDF or image, up to 8 MB."
-              onChange={(denrDocument) => {
-                setForm((current) => ({ ...current, denrDocument }))
-                setError('')
-              }}
-            />
-            <label className="service-field">
-              <span>Approval / certificate reference <small>Optional</small></span>
-              <input name="denrDocumentReference" maxLength={120} placeholder="Reference number, if available" value={form.denrDocumentReference} onChange={updateField} />
-            </label>
-          </div>
-          <label className="service-field service-field--full">
-            <span>Hazard or pruning details <i>Required</i></span>
-            <textarea name="hazardDescription" rows={3} maxLength={500} placeholder="For example: overhanging branches, close to power lines, risk of falling, or blocking a road." value={form.hazardDescription} onChange={updateField} required />
-          </label>
-        </div>
-      </section>
-
-      <section className="service-form-section" aria-labelledby="tree-photo-title">
-        <div className="service-section-heading">
-          <span>03</span><div><h3 id="tree-photo-title">Photo evidence</h3><p>Include a clear view of the tree and any immediate hazard.</p></div>
-        </div>
-        <FileUpload
-          id="tree-photo"
-          label="Photo of the tree"
-          required
-          value={form.photo}
-          help="Add one JPG, PNG, or WebP image (up to 5 MB)."
-          onChange={(photo) => {
-            setForm((current) => ({ ...current, photo }))
-            setError('')
-          }}
-        />
-      </section>
-
-      {error && <p className="service-form-error" role="alert">{error}</p>}
-      <div className="service-submit-row">
-        <p>After validation, you’ll receive a ticket reference and status.</p>
-        <button className="service-submit-button" type="submit" disabled={submitting}>{submitting ? 'Submitting ticket…' : 'Submit tree request'}</button>
-      </div>
-    </form>
-  )
-}
-
-function WaterwayCleaningForm() {
-  const [form, setForm] = useState(EMPTY_WATERWAY_FORM)
-  const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [request, setRequest] = useState(null)
-
-  function updateField(event) {
-    const { name, value } = event.target
-    setForm((current) => ({ ...current, [name]: value }))
-    setError('')
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault()
-    setError('')
-    setSubmitting(true)
-    try {
-      setRequest(await createWaterwayCleaningRequest(form))
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Waterway request could not be submitted.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  function resetForm() {
-    setForm(EMPTY_WATERWAY_FORM)
-    setRequest(null)
-    setError('')
-  }
-
-  return request ? (
-    <ServiceSuccess
-      request={request}
-      title="Waterway cleaning ticket created"
-      detail="Your public waterway location, issue details, and photo evidence have been recorded by the demo service."
-      onReset={resetForm}
-    />
-  ) : (
-    <form className="service-form-card service-form" onSubmit={handleSubmit} noValidate>
-      <div className="service-form-heading">
-        <div><p className="service-overline">PUBLIC WATERWAY REQUEST</p><h2>Canal, drainage, or waterway cleaning</h2></div>
-        <span className="required-note"><i>*</i> Required fields</span>
-      </div>
-      <p className="service-inline-note">This request is for public canals, drainage, and waterways. For immediate flooding or a safety emergency, contact your barangay directly.</p>
-
-      <section className="service-form-section" aria-labelledby="waterway-requester-title">
-        <div className="service-section-heading">
-          <span>01</span><div><h3 id="waterway-requester-title">Your details</h3><p>Provide a contact so the team can follow up.</p></div>
-        </div>
-        <div className="service-fields-grid">
-          <label className="service-field">
-            <span>Name <small>Optional</small></span>
-            <input name="fullName" autoComplete="name" maxLength={60} placeholder="Leave blank if preferred" value={form.fullName} onChange={updateField} />
-          </label>
-          <label className="service-field">
-            <span>Contact number <i>Required</i></span>
-            <input name="contactNumber" type="tel" autoComplete="tel" maxLength={20} placeholder="+63 9XX XXX XXXX" value={form.contactNumber} onChange={updateField} required />
-          </label>
-        </div>
-      </section>
-
-      <section className="service-form-section" aria-labelledby="waterway-issue-title">
-        <div className="service-section-heading">
-          <span>02</span><div><h3 id="waterway-issue-title">Location and issue</h3><p>Pinpoint the public place where cleaning is needed.</p></div>
-        </div>
-        <div className="service-fields-grid">
-          <label className="service-field">
-            <span>Waterway service <i>Required</i></span>
-            <select name="issueType" value={form.issueType} onChange={updateField}>
-              <option>Canal or waterway cleaning</option>
-              <option>Drainage cleaning</option>
-              <option>Water waste or clogging</option>
-            </select>
-          </label>
-          <label className="service-field service-field--full">
-            <span>Exact public location <i>Required</i></span>
-            <textarea name="location" rows={2} maxLength={160} placeholder="Canal, drainage, street, landmark, barangay" value={form.location} onChange={updateField} required />
-          </label>
-          <label className="service-field service-field--full">
-            <span>Description of water waste or clogging <i>Required</i></span>
-            <textarea name="description" rows={3} maxLength={500} placeholder="Describe the blockage, buildup, or cleaning concern." value={form.description} onChange={updateField} required />
-          </label>
-        </div>
-      </section>
-
-      <section className="service-form-section" aria-labelledby="waterway-photo-title">
-        <div className="service-section-heading">
-          <span>03</span><div><h3 id="waterway-photo-title">Photo evidence</h3><p>Show the canal or drainage issue clearly.</p></div>
-        </div>
-        <FileUpload
-          id="waterway-photo"
-          label="Photo of the canal or waterway"
-          required
-          value={form.photo}
-          help="Add one JPG, PNG, or WebP image (up to 5 MB)."
-          onChange={(photo) => {
-            setForm((current) => ({ ...current, photo }))
-            setError('')
-          }}
-        />
-      </section>
-
-      {error && <p className="service-form-error" role="alert">{error}</p>}
-      <div className="service-submit-row">
-        <p>A trackable water-cleaning ticket is generated after submission.</p>
-        <button className="service-submit-button" type="submit" disabled={submitting}>{submitting ? 'Submitting ticket…' : 'Submit waterway request'}</button>
-      </div>
-    </form>
   )
 }

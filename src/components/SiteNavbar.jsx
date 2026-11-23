@@ -7,7 +7,7 @@ import brandLogo from '../assets/i-WASTE-logo.svg'
 const NAV_ITEMS = [
   { label: 'Home', to: '/' },
   { label: 'Tracking', to: '/tracking' },
-  { label: 'Services', to: '/pickup' },
+  { label: 'Services', to: '/services' },
   { label: 'Community', to: '/community' },
   { label: 'Reports', to: '/reports' },
   { label: 'About', to: '/about' },
@@ -88,7 +88,7 @@ export default function SiteNavbar({ children }) {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) => {
-              const onServicePage = item.label === 'Services' && ['/pickup', '/tree-waterways', '/recyclables'].includes(pathname)
+              const onServicePage = item.label === 'Services' && ['/services', '/pickup', '/tree', '/waterway', '/tree-waterways', '/recyclables'].includes(pathname)
               return `nav-link${isActive || onServicePage ? ' nav-link--active' : ''}`
             }}
           >

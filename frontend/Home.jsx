@@ -8,19 +8,19 @@ import { validateSearchQuery } from '../src/utils/validation.js'
 const NAV_ITEMS = [
   { label: 'Home', to: '/', icon: 'home' },
   { label: 'Tracking', to: '/tracking', icon: 'pin' },
-  { label: 'Services', to: '/pickup', icon: 'truck' },
+  { label: 'Services', to: '/services', icon: 'truck' },
   { label: 'Community', to: '/community', icon: 'users' },
   { label: 'Reports', to: '/reports', icon: 'chart' },
   { label: 'About', to: '/about', icon: 'info' },
 ]
 
-const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) => item.to !== '/pickup' && item.to !== '/about')
+const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) => item.to !== '/services' && item.to !== '/about')
 
 // First action is the highlighted one in the design.
 const QUICK_ACTIONS = [
   { icon: 'truck', label: 'Special pickup', description: 'Request waste or oil collection', to: '/pickup', featured: true },
   { icon: 'alert', label: 'Report missed collection', description: 'Tell us if your street was skipped', to: '/reports' },
-  { icon: 'leaf', label: 'Tree & waterway', description: 'Request land or canal service', to: '/tree-waterways' },
+  { icon: 'leaf', label: 'Tree & waterway', description: 'Request land or canal service', to: '/services' },
   { icon: 'recycle', label: 'Sell recyclables', description: 'Arrange a recyclable pickup', to: '/recyclables' },
 ]
 
@@ -815,7 +815,7 @@ export default function Home() {
         ))}
         <Link
           className="mobile-nav-action"
-          to="/pickup"
+          to="/services"
           aria-label="Open resident services"
         >
           <span className="mobile-nav-action-plus" aria-hidden="true">+</span>

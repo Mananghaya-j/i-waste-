@@ -4,6 +4,8 @@ import PickupPage from '../frontend/PickupPage.jsx'
 import ServicesPage from '../frontend/ServicesPage.jsx'
 import RecyclablesPage from '../frontend/RecyclablesPage.jsx'
 import TrackingPage from '../frontend/TrackingPage.jsx'
+import TreePage from '../frontend/TreePage.jsx'
+import WaterwayPage from '../frontend/WaterwayPage.jsx'
 import './App.css'
 
 function App() {
@@ -12,8 +14,11 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/tracking" element={<TrackingPage />} />
+        <Route path="/services" element={<ServicesPage />} />
         <Route path="/pickup" element={<PickupPage />} />
-        <Route path="/tree-waterways" element={<ServicesPage />} />
+        <Route path="/tree" element={<TreePage />} />
+        <Route path="/waterway" element={<WaterwayPage />} />
+        <Route path="/tree-waterways" element={<Navigate to="/services" replace />} />
         <Route path="/recyclables" element={<RecyclablesPage />} />
         <Route path="/community" element={<Home />} />
         <Route path="/reports" element={<Home />} />

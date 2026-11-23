@@ -14,7 +14,7 @@ const SPECIAL_WASTE_TYPES = [
   'Glasses',
   'Others',
 ]
-const RECYCLABLE_TYPES = ['Plastic', 'Paper', 'Cardboard', 'Glass', 'Metal', 'Aluminum', 'Electronic Waste']
+const RECYCLABLE_TYPES = ['Plastic', 'Paper', 'Cardboard', 'Glass', 'Metal', 'Aluminum', 'Electronic Waste', 'Other']
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const MAX_DOCUMENT_SIZE = 8 * 1024 * 1024
 
@@ -119,28 +119,29 @@ export function validateModule3PickupRequest(input) {
     contactNumber,
     address,
     requestCategory,
-    specialWasteType = '',
+    specialWasteType = [],
     otherWaste = '',
     oilQuantityLiters = '',
     description = '',
     photo,
   } = input
   if (!isValidOptionalName(fullName)) return invalid('fullName', 'Enter a valid name or leave it blank to submit anonymously.')
-  if (!isValidContactNumber(contactNumber)) return invalid('contactNumber', 'Enter a valid contact number with 7–15 digits.')
+  if (!isValidContactNumber(contactNumber)) return invalid('contactNumber', 'Enter a valid contact number with 7â€“15 digits.')
   if (typeof address !== 'string' || hasControlCharacters(address) ||
     address.trim().length < 4 || !isSafeText(address.trim(), ADDRESS_CHARACTERS, 160)) {
-    return invalid('address', 'Enter the exact pickup address, street, and barangay (4–160 characters).')
+    return invalid('address', 'Enter the exact pickup address, street, and barangay (4â€“160 characters).')
   }
   if (!['normal', 'special', 'oil'].includes(requestCategory)) {
     return invalid('requestCategory', 'Choose Normal Waste, Special Waste, or Cooking Oil Collection.')
   }
-  if (requestCategory === 'special' && !SPECIAL_WASTE_TYPES.includes(specialWasteType)) {
+  if (requestCategory === 'special' && (!Array.isArray(specialWasteType) || specialWasteType.length === 0 ||
+    specialWasteType.some((type) => !SPECIAL_WASTE_TYPES.includes(type)))) {
     return invalid('specialWasteType', 'Choose a special waste type.')
   }
-  if (requestCategory === 'special' && specialWasteType === 'Others' &&
+  if (requestCategory === 'special' && specialWasteType.includes('Others') &&
     (typeof otherWaste !== 'string' || hasControlCharacters(otherWaste) || otherWaste.trim().length < 2 ||
       !isSafeText(otherWaste.trim(), DESCRIPTION_CHARACTERS, 120))) {
-    return invalid('otherWaste', 'Describe the other waste type (2–120 characters).')
+    return invalid('otherWaste', 'Describe the other waste type (2â€“120 characters).')
   }
   if (requestCategory === 'oil') {
     if (typeof oilQuantityLiters !== 'string' && typeof oilQuantityLiters !== 'number') {
@@ -163,8 +164,8 @@ export function validateModule3PickupRequest(input) {
       contactNumber: contactNumber.trim(),
       address: address.trim(),
       requestCategory,
-      specialWasteType: requestCategory === 'special' ? specialWasteType : '',
-      otherWaste: requestCategory === 'special' && specialWasteType === 'Others' ? otherWaste.trim() : '',
+      specialWasteType: requestCategory === 'special' ? [...new Set(specialWasteType)] : [],
+      otherWaste: requestCategory === 'special' && specialWasteType.includes('Others') ? otherWaste.trim() : '',
       oilQuantityLiters: requestCategory === 'oil' ? Number(oilQuantityLiters) : null,
       description: description.trim(),
       photo,
@@ -190,10 +191,10 @@ export function validateTreeMaintenanceRequest(input) {
     instructionsAccepted,
   } = input
   if (!isValidOptionalName(fullName)) return invalid('fullName', 'Enter a valid name or leave it blank to submit anonymously.')
-  if (!isValidContactNumber(contactNumber)) return invalid('contactNumber', 'Enter a valid contact number with 7–15 digits.')
+  if (!isValidContactNumber(contactNumber)) return invalid('contactNumber', 'Enter a valid contact number with 7â€“15 digits.')
   if (typeof location !== 'string' || hasControlCharacters(location) ||
     location.trim().length < 4 || !isSafeText(location.trim(), ADDRESS_CHARACTERS, 160)) {
-    return invalid('location', 'Enter the exact tree location or address (4–160 characters).')
+    return invalid('location', 'Enter the exact tree location or address (4â€“160 characters).')
   }
   if (!['private', 'public'].includes(landClassification)) return invalid('landClassification', 'Choose the land classification.')
   if (!['cutting', 'pruning'].includes(requestType)) return invalid('requestType', 'Choose cutting or pruning.')
@@ -203,7 +204,7 @@ export function validateTreeMaintenanceRequest(input) {
   }
   if (typeof hazardDescription !== 'string' || hasControlCharacters(hazardDescription) || hazardDescription.trim().length < 8 ||
     !isSafeText(hazardDescription.trim(), DESCRIPTION_CHARACTERS, 500)) {
-    return invalid('hazardDescription', 'Describe the tree hazard (8–500 characters).')
+    return invalid('hazardDescription', 'Describe the tree hazard (8â€“500 characters).')
   }
   if (!isValidOptionalDocument(denrDocument)) {
     return invalid('denrDocument', 'Use a PDF, JPG, PNG, or WebP document up to 8 MB.')
@@ -235,17 +236,18 @@ export function validateWaterwayCleaningRequest(input) {
   }
   const { fullName = '', contactNumber, location, issueType, description, photo } = input
   if (!isValidOptionalName(fullName)) return invalid('fullName', 'Enter a valid name or leave it blank to submit anonymously.')
-  if (!isValidContactNumber(contactNumber)) return invalid('contactNumber', 'Enter a valid contact number with 7–15 digits.')
+  if (!isValidContactNumber(contactNumber)) return invalid('contactNumber', 'Enter a valid contact number with 7â€“15 digits.')
   if (typeof location !== 'string' || hasControlCharacters(location) ||
     location.trim().length < 4 || !isSafeText(location.trim(), ADDRESS_CHARACTERS, 160)) {
     return invalid('location', 'Enter the exact public canal, drainage, or waterway location.')
   }
-  if (!['Canal or waterway cleaning', 'Drainage cleaning', 'Water waste or clogging'].includes(issueType)) {
+  const allowedIssueTypes = ['Canal or waterway cleaning', 'Drainage cleaning', 'Water waste or clogging']
+  if (!Array.isArray(issueType) || issueType.length === 0 || issueType.some((type) => !allowedIssueTypes.includes(type))) {
     return invalid('issueType', 'Choose a waterway service type.')
   }
   if (typeof description !== 'string' || hasControlCharacters(description) || description.trim().length < 8 ||
     !isSafeText(description.trim(), DESCRIPTION_CHARACTERS, 500)) {
-    return invalid('description', 'Describe the water waste or clogging issue (8–500 characters).')
+    return invalid('description', 'Describe the water waste or clogging issue (8â€“500 characters).')
   }
   if (!isValidImage(photo)) return invalid('photo', 'Add one JPG, PNG, or WebP waterway photo up to 5 MB.')
 
@@ -255,7 +257,7 @@ export function validateWaterwayCleaningRequest(input) {
       fullName: typeof fullName === 'string' ? fullName.trim() || null : null,
       contactNumber: contactNumber.trim(),
       location: location.trim(),
-      issueType,
+      issueType: [...new Set(issueType)],
       description: description.trim(),
       photo,
     },
@@ -263,53 +265,46 @@ export function validateWaterwayCleaningRequest(input) {
 }
 
 export function validateRecyclablesRequest(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    return invalid('form', 'Enter recyclable material details to continue.')
-  }
-  const {
-    fullName = '',
-    contactNumber,
-    materialType,
-    estimatedWeight = '',
-    photos,
-    pickupAddress,
-    fulfillment,
-    preferredDate,
-  } = input
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return invalid('form', 'Enter recyclable material details to continue.')
+  const { fullName = '', contactNumber, materials, photos, pickupAddress, fulfillment } = input
   if (!isValidOptionalName(fullName)) return invalid('fullName', 'Enter a valid name or leave it blank to submit anonymously.')
   if (!isValidContactNumber(contactNumber)) return invalid('contactNumber', 'Enter a valid contact number with 7–15 digits.')
-  if (!RECYCLABLE_TYPES.includes(materialType)) return invalid('materialType', 'Choose one of the listed recyclable materials.')
-  let weight = null
-  if (estimatedWeight !== '') {
-    if (typeof estimatedWeight !== 'string' && typeof estimatedWeight !== 'number') {
-      return invalid('estimatedWeight', 'Enter the estimated material weight in kilograms.')
+  if (!Array.isArray(materials) || materials.length < 1 || materials.length > 20) return invalid('materials', 'Add between 1 and 20 recyclable material types.')
+  const validatedMaterials = []
+  const seenMaterialTypes = new Set()
+  for (const [index, material] of materials.entries()) {
+    if (!material || !RECYCLABLE_TYPES.includes(material.materialType)) return invalid('materials', `Choose a valid type for material ${index + 1}.`)
+    if (seenMaterialTypes.has(material.materialType)) return invalid('materials', 'Each material type can only be added once.')
+    seenMaterialTypes.add(material.materialType)
+    if (material.materialType === 'Other' && (typeof material.otherMaterialType !== 'string' || material.otherMaterialType.trim().length < 2 || !isSafeText(material.otherMaterialType.trim(), DESCRIPTION_CHARACTERS, 60))) {
+      return invalid('materials', `Describe the other material type in row ${index + 1}.`)
     }
-    weight = Number(estimatedWeight)
-    if (!Number.isFinite(weight) || weight <= 0 || weight > 10000) {
-      return invalid('estimatedWeight', 'Enter a weight greater than 0 and no more than 10,000 kg.')
-    }
-  }
-  if (!Array.isArray(photos) || photos.length < 1 || photos.length > 5 || photos.some((photo) => !isValidImage(photo))) {
-    return invalid('photos', 'Add 1–5 JPG, PNG, or WebP photos, up to 5 MB each.')
-  }
-  if (typeof pickupAddress !== 'string' || hasControlCharacters(pickupAddress) || pickupAddress.trim().length < 4 ||
-    !isSafeText(pickupAddress.trim(), ADDRESS_CHARACTERS, 160)) {
-    return invalid('pickupAddress', 'Enter the pickup address (4–160 characters).')
+    const volume = Number(material.volumeLiters)
+    if (!Number.isFinite(volume) || volume <= 0 || volume > 100000) return invalid('materials', `Enter a volume from 0.1 to 100,000 liters for material ${index + 1}.`)
+    validatedMaterials.push({
+      materialType: material.materialType,
+      otherMaterialType: material.materialType === 'Other' ? material.otherMaterialType.trim() : null,
+      volumeLiters: volume,
+    })
   }
   if (!['Pickup', 'Drop-off'].includes(fulfillment)) return invalid('fulfillment', 'Choose pickup or drop-off.')
-  if (!isTodayOrFutureDate(preferredDate)) return invalid('preferredDate', 'Choose today or a future date.')
-
+  if (!Array.isArray(photos) || photos.length > 5 || photos.some((photo) => !isValidImage(photo)) || (fulfillment === 'Pickup' && photos.length < 1)) {
+    return invalid('photos', 'For pickup, add 1–5 JPG, PNG, or WebP photos, up to 5 MB each.')
+  }
+  if (fulfillment === 'Pickup' && (typeof pickupAddress !== 'string' || hasControlCharacters(pickupAddress) || pickupAddress.trim().length < 4 ||
+    !isSafeText(pickupAddress.trim(), ADDRESS_CHARACTERS, 160))) {
+    return invalid('pickupAddress', 'Enter the pickup address (4–160 characters).')
+  }
   return {
     valid: true,
     value: {
       fullName: typeof fullName === 'string' ? fullName.trim() || null : null,
       contactNumber: contactNumber.trim(),
-      materialType,
-      estimatedWeight: weight,
+      materials: validatedMaterials,
       photos,
-      pickupAddress: pickupAddress.trim(),
+      pickupAddress: fulfillment === 'Pickup' ? pickupAddress.trim() : '',
       fulfillment,
-      preferredDate,
+      preferredDate: null,
     },
   }
 }

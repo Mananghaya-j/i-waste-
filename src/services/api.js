@@ -32,16 +32,6 @@ const directory = [
   { label: 'Greenfield Park · Tree planting', category: 'Community event' },
 ]
 
-const RECYCLABLE_ESTIMATES = {
-  Plastic: { valuePerKg: 10, litersPerKg: 4 },
-  Paper: { valuePerKg: 6, litersPerKg: 3 },
-  Cardboard: { valuePerKg: 5, litersPerKg: 5 },
-  Glass: { valuePerKg: 2, litersPerKg: 1 },
-  Metal: { valuePerKg: 12, litersPerKg: 1 },
-  Aluminum: { valuePerKg: 30, litersPerKg: 2 },
-  'Electronic Waste': { valuePerKg: 20, litersPerKg: 2 },
-}
-
 function describeFile(file) {
   return file ? { name: file.name, contentType: file.type, sizeBytes: file.size } : null
 }
@@ -109,15 +99,12 @@ export async function createWaterwayCleaningRequest(input) {
   return { reference: makeReference('WW'), status: 'Submitted', ...fields, photo: describeFile(photo) }
 }
 
-export function estimateRecyclables({ materialType, estimatedWeight }) {
-  const material = RECYCLABLE_ESTIMATES[materialType]
-  const weight = Number(estimatedWeight)
-  if (!material || !Number.isFinite(weight) || weight <= 0) return null
-
+export function estimateRecyclables({ materials }) {
+  if (!Array.isArray(materials) || materials.length === 0) return null
   return {
-    estimatedValue: Math.round(weight * material.valuePerKg * 100) / 100,
-    estimatedVolumeLiters: Math.round(weight * material.litersPerKg * 10) / 10,
-    sampleValuePerKg: material.valuePerKg,
+    estimatedValue: null,
+    estimatedVolumeLiters: materials.reduce((total, material) => total + Number(material.volumeLiters || 0), 0),
+    sampleValuePerKg: null,
   }
 }
 
