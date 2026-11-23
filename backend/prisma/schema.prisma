@@ -1,0 +1,369 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  RESIDENT
+  ADMIN
+  SUPERADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RequestStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum PickupCategory {
+  NORMAL
+  SPECIAL
+  COOKING_OIL
+}
+
+enum TreeRequestType {
+  CUTTING
+  PRUNING
+}
+
+enum LandClassification {
+  PRIVATE
+  PUBLIC
+}
+
+enum TruckStatus {
+  ACTIVE
+  IDLE
+  MAINTENANCE
+  ROUTE_COMPLETED
+}
+
+enum EnvironmentalReportType {
+  ILLEGAL_DUMPING
+  MISSED_COLLECTION
+  OTHER
+}
+
+enum NotificationType {
+  REQUEST_UPDATE
+  TRUCK_STATUS
+  COMPLETION
+  ADMIN_ALERT
+}
+
+enum TripStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id                   String                @id @default(uuid()) @db.Uuid
+  fullName             String                @map("full_name") @db.VarChar(120)
+  email                String                @unique @db.VarChar(254)
+  contactNumber        String?               @map("contact_number") @db.VarChar(24)
+  passwordHash         String                @map("password_hash") @db.VarChar(255)
+  role                 UserRole              @default(RESIDENT)
+  status               AccountStatus         @default(ACTIVE)
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  refreshTokens        RefreshToken[]
+  resetTokens          PasswordResetToken[]
+  auditLogs            AuditLog[]            @relation("AuditActor")
+  assignedTrucks       Truck[]               @relation("TruckAdmin")
+  tripsCreated         TripTicket[]          @relation("TripCreator")
+  pickupRequests       PickupRequest[]       @relation("PickupRequester")
+  treeRequests         TreeRequest[]         @relation("TreeRequester")
+  waterwayRequests     WaterwayRequest[]     @relation("WaterwayRequester")
+  environmentalReports EnvironmentalReport[] @relation("ReportRequester")
+  notifications        Notification[]
+  uploadedAttachments  Attachment[]          @relation("AttachmentUploader")
+
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  userId    String    @map("user_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  userId    String    @map("user_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String   @db.VarChar(80)
+  entityType String   @map("entity_type") @db.VarChar(80)
+  entityId   String?  @map("entity_id") @db.VarChar(80)
+  metadata   Json     @default("{}")
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Truck {
+  id             String          @id @default(uuid()) @db.Uuid
+  truckId        String          @unique @map("truck_id") @db.VarChar(32)
+  plateNumber    String          @unique @map("plate_number") @db.VarChar(20)
+  vehicleType    String          @map("vehicle_type") @db.VarChar(80)
+  capacityKg     Decimal?        @map("capacity_kg") @db.Decimal(10, 2)
+  driverName     String?         @map("driver_name") @db.VarChar(120)
+  crew           String?         @db.VarChar(500)
+  qrCodeValue    String          @unique @map("qr_code_value") @db.VarChar(80)
+  status         TruckStatus     @default(IDLE)
+  currentStreet  String?         @map("current_street") @db.VarChar(160)
+  adminId        String?         @map("admin_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  admin          User?           @relation("TruckAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+  trips          TripTicket[]
+  pickupRequests PickupRequest[]
+
+  @@index([status])
+  @@index([adminId])
+  @@map("trucks")
+}
+
+model Route {
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String            @db.VarChar(120)
+  description String?           @db.VarChar(500)
+  isActive    Boolean           @default(true) @map("is_active")
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  checkpoints RouteCheckpoint[]
+  trips       TripTicket[]
+
+  @@index([isActive])
+  @@map("routes")
+}
+
+model RouteCheckpoint {
+  id         String   @id @default(uuid()) @db.Uuid
+  routeId    String   @map("route_id") @db.Uuid
+  sequence   Int
+  streetName String   @map("street_name") @db.VarChar(160)
+  latitude   Decimal? @db.Decimal(9, 6)
+  longitude  Decimal? @db.Decimal(9, 6)
+  route      Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@unique([routeId, sequence])
+  @@index([routeId])
+  @@map("route_checkpoints")
+}
+
+model TripTicket {
+  id          String           @id @default(uuid()) @db.Uuid
+  tripNo      String           @unique @map("trip_no") @db.VarChar(32)
+  truckId     String           @map("truck_id") @db.Uuid
+  routeId     String?          @map("route_id") @db.Uuid
+  createdById String           @map("created_by_id") @db.Uuid
+  status      TripStatus       @default(ACTIVE)
+  startedAt   DateTime         @default(now()) @map("started_at") @db.Timestamptz(3)
+  completedAt DateTime?        @map("completed_at") @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  truck       Truck            @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  route       Route?           @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  createdBy   User             @relation("TripCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  checkpoints TripCheckpoint[]
+
+  @@index([truckId, startedAt])
+  @@index([routeId])
+  @@index([status])
+  @@map("trip_tickets")
+}
+
+model TripCheckpoint {
+  id                String     @id @default(uuid()) @db.Uuid
+  tripTicketId      String     @map("trip_ticket_id") @db.Uuid
+  routeCheckpointId String?    @map("route_checkpoint_id") @db.Uuid
+  streetName        String     @map("street_name") @db.VarChar(160)
+  arrivedAt         DateTime   @default(now()) @map("arrived_at") @db.Timestamptz(3)
+  completed         Boolean    @default(false)
+  completedAt       DateTime?  @map("completed_at") @db.Timestamptz(3)
+  tripTicket        TripTicket @relation(fields: [tripTicketId], references: [id], onDelete: Cascade)
+
+  @@index([tripTicketId, arrivedAt])
+  @@map("trip_checkpoints")
+}
+
+model PickupRequest {
+  id                String         @id @default(uuid()) @db.Uuid
+  referenceNo       String         @unique @map("reference_no") @db.VarChar(32)
+  requesterId       String?        @map("requester_id") @db.Uuid
+  fullName          String?        @map("full_name") @db.VarChar(120)
+  contactNumber     String         @map("contact_number") @db.VarChar(24)
+  email             String?        @db.VarChar(254)
+  address           String         @db.VarChar(300)
+  category          PickupCategory
+  specialWasteType  String?        @map("special_waste_type") @db.VarChar(80)
+  otherWaste        String?        @map("other_waste") @db.VarChar(160)
+  oilQuantityLiters Decimal?       @map("oil_quantity_liters") @db.Decimal(10, 2)
+  description       String?        @db.VarChar(1000)
+  status            RequestStatus  @default(SUBMITTED)
+  adminNotes        String?        @map("admin_notes") @db.VarChar(1000)
+  assignedTruckId   String?        @map("assigned_truck_id") @db.Uuid
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  requester         User?          @relation("PickupRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  assignedTruck     Truck?         @relation(fields: [assignedTruckId], references: [id], onDelete: SetNull)
+  attachments       Attachment[]
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([requesterId, createdAt])
+  @@index([assignedTruckId])
+  @@map("pickup_requests")
+}
+
+model TreeRequest {
+  id                    String             @id @default(uuid()) @db.Uuid
+  referenceNo           String             @unique @map("reference_no") @db.VarChar(32)
+  requesterId           String?            @map("requester_id") @db.Uuid
+  fullName              String?            @map("full_name") @db.VarChar(120)
+  contactNumber         String             @map("contact_number") @db.VarChar(24)
+  location              String             @db.VarChar(300)
+  landClassification    LandClassification @map("land_classification")
+  requestType           TreeRequestType    @map("request_type")
+  treeType              String?            @map("tree_type") @db.VarChar(80)
+  hazardDescription     String             @map("hazard_description") @db.VarChar(1000)
+  denrDocumentReference String?            @map("denr_document_reference") @db.VarChar(160)
+  instructionsAccepted  Boolean            @map("instructions_accepted")
+  status                RequestStatus      @default(SUBMITTED)
+  adminNotes            String?            @map("admin_notes") @db.VarChar(1000)
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  requester             User?              @relation("TreeRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  attachments           Attachment[]
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([requesterId, createdAt])
+  @@map("tree_requests")
+}
+
+model WaterwayRequest {
+  id            String        @id @default(uuid()) @db.Uuid
+  referenceNo   String        @unique @map("reference_no") @db.VarChar(32)
+  requesterId   String?       @map("requester_id") @db.Uuid
+  fullName      String?       @map("full_name") @db.VarChar(120)
+  contactNumber String        @map("contact_number") @db.VarChar(24)
+  location      String        @db.VarChar(300)
+  issueType     String        @map("issue_type") @db.VarChar(80)
+  description   String        @db.VarChar(1000)
+  status        RequestStatus @default(SUBMITTED)
+  adminNotes    String?       @map("admin_notes") @db.VarChar(1000)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  requester     User?         @relation("WaterwayRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  attachments   Attachment[]
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([requesterId, createdAt])
+  @@map("waterway_requests")
+}
+
+model EnvironmentalReport {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  referenceNo        String                  @unique @map("reference_no") @db.VarChar(32)
+  requesterId        String?                 @map("requester_id") @db.Uuid
+  anonymous          Boolean                 @default(false)
+  fullName           String?                 @map("full_name") @db.VarChar(120)
+  contactNumber      String?                 @map("contact_number") @db.VarChar(24)
+  type               EnvironmentalReportType
+  location           String                  @db.VarChar(300)
+  description        String                  @db.VarChar(1500)
+  status             RequestStatus           @default(SUBMITTED)
+  investigationNotes String?                 @map("investigation_notes") @db.VarChar(1500)
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  requester          User?                   @relation("ReportRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  attachments        Attachment[]
+
+  @@index([type, status, createdAt])
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@map("environmental_reports")
+}
+
+model Attachment {
+  id                    String               @id @default(uuid()) @db.Uuid
+  storageKey            String               @unique @map("storage_key") @db.VarChar(255)
+  originalName          String               @map("original_name") @db.VarChar(255)
+  mimeType              String               @map("mime_type") @db.VarChar(100)
+  sizeBytes             Int                  @map("size_bytes")
+  purpose               String               @db.VarChar(40)
+  uploadedById          String?              @map("uploaded_by_id") @db.Uuid
+  pickupRequestId       String?              @map("pickup_request_id") @db.Uuid
+  treeRequestId         String?              @map("tree_request_id") @db.Uuid
+  waterwayRequestId     String?              @map("waterway_request_id") @db.Uuid
+  environmentalReportId String?              @map("environmental_report_id") @db.Uuid
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  uploadedBy            User?                @relation("AttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  pickupRequest         PickupRequest?       @relation(fields: [pickupRequestId], references: [id], onDelete: Cascade)
+  treeRequest           TreeRequest?         @relation(fields: [treeRequestId], references: [id], onDelete: Cascade)
+  waterwayRequest       WaterwayRequest?     @relation(fields: [waterwayRequestId], references: [id], onDelete: Cascade)
+  environmentalReport   EnvironmentalReport? @relation(fields: [environmentalReportId], references: [id], onDelete: Cascade)
+
+  @@index([pickupRequestId])
+  @@index([treeRequestId])
+  @@index([waterwayRequestId])
+  @@index([environmentalReportId])
+  @@map("attachments")
+}
+
+model Notification {
+  id         String           @id @default(uuid()) @db.Uuid
+  userId     String?          @map("user_id") @db.Uuid
+  type       NotificationType
+  title      String           @db.VarChar(160)
+  message    String           @db.VarChar(1000)
+  entityType String?          @map("entity_type") @db.VarChar(80)
+  entityId   String?          @map("entity_id") @db.VarChar(80)
+  readAt     DateTime?        @map("read_at") @db.Timestamptz(3)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  user       User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([createdAt])
+  @@map("notifications")
+}

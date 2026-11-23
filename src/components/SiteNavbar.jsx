@@ -2,7 +2,9 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { searchDirectory } from '../services/api.js'
 import { validateSearchQuery } from '../utils/validation.js'
+import { useAuth } from '../context/useAuth.js'
 import brandLogo from '../assets/i-WASTE-logo.svg'
+import './authNav.css'
 
 const NAV_ITEMS = [
   { label: 'Home', to: '/' },
@@ -71,6 +73,39 @@ function HeaderTools() {
   )
 }
 
+function AuthActions() {
+  const { user, status, logout } = useAuth()
+  const [logoutError, setLogoutError] = useState('')
+
+  async function handleLogout() {
+    setLogoutError('')
+    try {
+      await logout()
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : 'Unable to end your session.')
+    }
+  }
+
+  if (status === 'loading') return <span className="auth-nav-loading" aria-label="Restoring session" />
+
+  return (
+    <div className="auth-nav">
+      {status === 'authenticated' ? (
+        <>
+          <span className="auth-nav-name" title={user.fullName}>{user.fullName}</span>
+          <button type="button" className="auth-nav-logout" onClick={handleLogout}>Sign out</button>
+        </>
+      ) : (
+        <>
+          <Link className="auth-nav-login" to="/login">Sign in</Link>
+          <Link className="auth-nav-register" to="/register">Register</Link>
+        </>
+      )}
+      {logoutError && <span className="auth-nav-error" role="status">{logoutError}</span>}
+    </div>
+  )
+}
+
 export default function SiteNavbar({ children }) {
   const { pathname } = useLocation()
 
@@ -96,7 +131,10 @@ export default function SiteNavbar({ children }) {
           </NavLink>
         ))}
       </nav>
-      {children || <HeaderTools />}
+      <div className="site-header-actions">
+        {children || <HeaderTools />}
+        <AuthActions />
+      </div>
     </header>
   )
 }

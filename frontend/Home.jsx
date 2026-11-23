@@ -1,20 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import RouteMap from '../src/components/RouteMap.jsx'
 import SiteNavbar from '../src/components/SiteNavbar.jsx'
 import { getDashboardData, joinCommunityEvent, searchDirectory } from '../src/services/api.js'
 import { validateSearchQuery } from '../src/utils/validation.js'
-
-const NAV_ITEMS = [
-  { label: 'Home', to: '/', icon: 'home' },
-  { label: 'Tracking', to: '/tracking', icon: 'pin' },
-  { label: 'Services', to: '/pickup', icon: 'truck' },
-  { label: 'Community', to: '/community', icon: 'users' },
-  { label: 'Reports', to: '/reports', icon: 'chart' },
-  { label: 'About', to: '/about', icon: 'info' },
-]
-
-const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) => item.to !== '/pickup' && item.to !== '/about')
 
 // First action is the highlighted one in the design.
 const QUICK_ACTIONS = [
@@ -801,38 +790,6 @@ export default function Home() {
         Integrated Waste Access System, Tracking &amp; Education <span aria-hidden="true">·</span> Barangay Bagong Silangan
       </footer>
 
-      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-        {MOBILE_NAV_ITEMS.slice(0, 2).map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            className={({ isActive }) => `mobile-nav-link${isActive ? ' mobile-nav-link--active' : ''}`}
-          >
-            <Icon name={item.icon} size={20} />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
-        <Link
-          className="mobile-nav-action"
-          to="/pickup"
-          aria-label="Open resident services"
-        >
-          <span className="mobile-nav-action-plus" aria-hidden="true">+</span>
-          <span>Services</span>
-        </Link>
-        {MOBILE_NAV_ITEMS.slice(2).map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            className={({ isActive }) => `mobile-nav-link${isActive ? ' mobile-nav-link--active' : ''}`}
-          >
-            <Icon name={item.icon} size={20} />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
-      </nav>
     </div>
   )
 }
