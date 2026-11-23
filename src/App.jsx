@@ -3,6 +3,7 @@ import Home from '../frontend/Home.jsx'
 import PickupPage from '../frontend/PickupPage.jsx'
 import ServicesPage from '../frontend/ServicesPage.jsx'
 import RecyclablesPage from '../frontend/RecyclablesPage.jsx'
+import TrackingPage from '../frontend/TrackingPage.jsx'
 import './App.css'
 
 function App() {
@@ -10,7 +11,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/tracking" element={<Home />} />
+        <Route path="/tracking" element={<TrackingPage />} />
         <Route path="/pickup" element={<PickupPage />} />
         <Route path="/tree-waterways" element={<ServicesPage />} />
         <Route path="/recyclables" element={<RecyclablesPage />} />

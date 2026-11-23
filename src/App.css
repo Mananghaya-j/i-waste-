@@ -2152,6 +2152,46 @@
 
 .mobile-nav-action { text-decoration: none; }
 
+/* Standalone live tracking page */
+.tracking-app { min-height: 100vh; color: #173d26; background: linear-gradient(145deg, #f8fcf5, #eaf4e5 56%, #f5faf2); }
+.tracking-main { width: min(1320px, 100% - 48px); margin: 0 auto; padding: 34px 0 56px; }
+.tracking-heading { margin-bottom: 22px; }
+.tracking-eyebrow { margin: 0 0 7px; color: #398043; font-size: 11px; font-weight: 700; letter-spacing: .12em; }
+.tracking-heading h1 { margin: 0; color: #183e27; font-size: clamp(28px, 4vw, 38px); letter-spacing: -.8px; }
+.tracking-heading > p:last-child { margin: 8px 0 0; color: #5a765e; font-size: 15px; }
+.tracking-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, .8fr); gap: 20px; align-items: stretch; }
+.tracking-map-card, .tracking-route-card { min-width: 0; padding: 22px; border: 1px solid #d5e6ce; border-radius: 18px; background: rgba(255,255,255,.96); box-shadow: 0 7px 22px rgba(39,93,45,.08); }
+.tracking-map-card { display: flex; flex-direction: column; }
+.tracking-card-heading, .tracking-route-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.tracking-card-heading { margin-bottom: 16px; }
+.tracking-card-heading h2, .tracking-route-title h2 { margin: 5px 0 0; color: #20492c; font-size: 20px; }
+.tracking-live { display: inline-flex; align-items: center; gap: 7px; color: #267642; font-size: 12px; font-weight: 700; }
+.tracking-live i { width: 8px; height: 8px; border-radius: 50%; background: #36a854; box-shadow: 0 0 0 4px #e2f2e3; }
+.tracking-updated { color: #718574; font-size: 12px; }
+.tracking-map-window { flex: 1; min-height: 520px; overflow: hidden; border: 1px solid #d9e7d4; border-radius: 13px; }
+.tracking-map-window .route-map-shell, .tracking-map-window .route-map { height: 100%; min-height: 520px; }
+.tracking-route-card { display: flex; flex-direction: column; gap: 22px; }
+.tracking-route-title > div > span { color: #718574; font-size: 10px; font-weight: 700; letter-spacing: .1em; }
+.tracking-status { padding: 7px 10px; border-radius: 999px; color: #256d3a; background: #e1f1dc; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.tracking-eta { display: grid; gap: 8px; padding: 16px; border-radius: 13px; background: #f1f7ee; }
+.tracking-eta > span { color: #5a765e; font-size: 12px; }
+.tracking-eta strong { color: #12663a; font-size: 48px; line-height: 1; }
+.tracking-eta small { font-size: 17px; }
+.tracking-stops { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.tracking-stop { position: relative; display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 12px; min-height: 70px; }
+.tracking-stop:not(:last-child)::after { position: absolute; top: 15px; bottom: 0; left: 7px; width: 2px; content: ''; background: #d7e5d3; }
+.tracking-stop > i { z-index: 1; width: 14px; height: 14px; margin-top: 2px; border: 2px solid #92b79a; border-radius: 50%; background: #fff; }
+.tracking-stop--done > i { border-color: #258044; background: #258044; }
+.tracking-stop--current > i { border-color: #258044; background: #9bdc73; box-shadow: 0 0 0 4px #e7f4e1; }
+.tracking-stop > div { display: grid; align-content: start; gap: 5px; padding-bottom: 17px; }
+.tracking-stop strong { color: #315943; font-size: 13px; line-height: 1.4; }
+.tracking-stop span { color: #718574; font-size: 11px; }
+.tracking-stop--current strong, .tracking-stop--current span { color: #267642; font-weight: 700; }
+.tracking-note { margin: auto 0 0; padding-top: 14px; border-top: 1px solid #e3eee0; color: #718574; font-size: 11px; line-height: 1.55; }
+
+@media (max-width: 850px) { .tracking-layout { grid-template-columns: minmax(0, 1fr); } .tracking-map-window, .tracking-map-window .route-map-shell, .tracking-map-window .route-map { min-height: 430px; } }
+@media (max-width: 520px) { .tracking-main { width: calc(100% - 24px); padding-top: 23px; } .tracking-map-card, .tracking-route-card { padding: 15px; } .tracking-map-window, .tracking-map-window .route-map-shell, .tracking-map-window .route-map { min-height: 350px; } .tracking-heading > p:last-child { font-size: 13px; } }
+
 @media (max-width: 760px) {
   .service-main { width: min(100% - 24px, 680px); padding-top: 21px; }
   .service-module-tabs { gap: 8px; margin-bottom: 16px; }

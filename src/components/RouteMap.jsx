@@ -2,25 +2,22 @@ import { useEffect } from 'react'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap, ZoomControl } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
-const ROUTE_POINTS = [
-  [14.7016, 121.1122],
-  [14.7005, 121.1104],
-  [14.699, 121.1074],
-  [14.6976, 121.1106],
-  [14.6958, 121.112],
-  [14.6936, 121.1106],
+// Defaults keep <RouteMap /> on the Home page working exactly as before.
+const DEFAULT_STOPS = [
+  { name: 'Bagong Silangan north checkpoint', position: [14.7016, 121.1122], state: 'done' },
+  { name: 'Bagong Silangan central checkpoint', position: [14.699, 121.1074], state: 'current' },
+  { name: 'Bagong Silangan south checkpoint', position: [14.6958, 121.112], state: 'pending' },
+  { name: 'Bagong Silangan east checkpoint', position: [14.6936, 121.1106], state: 'pending' },
 ]
+const DEFAULT_TRUCK = { position: [14.699, 121.1074], title: 'Route B-12', subtitle: 'Next: Bagong Silangan · ETA 2 mins' }
 
-const CHECKPOINTS = [
-  { position: ROUTE_POINTS[0], name: 'Bagong Silangan north checkpoint' },
-  { position: ROUTE_POINTS[2], name: 'Bagong Silangan central checkpoint' },
-  { position: ROUTE_POINTS[4], name: 'Bagong Silangan south checkpoint' },
-  { position: ROUTE_POINTS[5], name: 'Bagong Silangan east checkpoint' },
-]
-
-const TRUCK_POSITION = ROUTE_POINTS[2]
-const STOP_STYLE = { color: '#ffffff', weight: 3, fillColor: '#168044', fillOpacity: 1 }
 const ROUTE_STYLE = { color: '#1e8e4c', weight: 5, opacity: 0.9 }
+const STOP_STYLES = {
+  done: { color: '#ffffff', weight: 3, fillColor: '#168044', fillOpacity: 1 },
+  current: { color: '#ffffff', weight: 3, fillColor: '#075d35', fillOpacity: 1 },
+  pending: { color: '#168044', weight: 3, fillColor: '#ffffff', fillOpacity: 1 },
+}
+const STATE_LABEL = { done: 'Completed', current: 'Being serviced now', pending: 'Upcoming' }
 
 function MapResizeHandler() {
   const map = useMap()
@@ -47,7 +44,22 @@ function MapResizeHandler() {
   return null
 }
 
-export default function RouteMap() {
+// Re-frames the map whenever a different route is shown.
+function FitRoute({ positions }) {
+  const map = useMap()
+  const key = positions.map((p) => p.join(',')).join('|')
+
+  useEffect(() => {
+    if (positions.length > 1) map.fitBounds(positions, { padding: [36, 36], maxZoom: 17 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, key])
+
+  return null
+}
+
+export default function RouteMap({ stops = DEFAULT_STOPS, truck = DEFAULT_TRUCK }) {
+  const positions = stops.map((stop) => stop.position)
+
   return (
     <div className="route-map-shell" role="region" aria-label="Interactive collection route map">
       <MapContainer
@@ -61,33 +73,33 @@ export default function RouteMap() {
         zoomControl={false}
       >
         <MapResizeHandler />
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxZoom={19}
-        />
-        <Polyline positions={ROUTE_POINTS} pathOptions={ROUTE_STYLE} />
-        {CHECKPOINTS.map((checkpoint) => (
+        <FitRoute positions={positions} />
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />
+        <Polyline positions={positions} pathOptions={ROUTE_STYLE} />
+        {stops.map((stop) => (
           <CircleMarker
-            key={checkpoint.name}
-            center={checkpoint.position}
-            radius={7}
-            pathOptions={STOP_STYLE}
+            key={stop.name}
+            center={stop.position}
+            radius={stop.state === 'current' ? 9 : 7}
+            pathOptions={STOP_STYLES[stop.state] || STOP_STYLES.pending}
           >
-            <Tooltip>{checkpoint.name}</Tooltip>
+            <Tooltip>{stop.name} · {STATE_LABEL[stop.state] || STATE_LABEL.pending}</Tooltip>
           </CircleMarker>
         ))}
-        <CircleMarker
-          center={TRUCK_POSITION}
-          radius={11}
-          pathOptions={{ ...STOP_STYLE, color: '#ffffff', weight: 4, fillColor: '#075d35' }}
-        >
-          <Tooltip permanent direction="right" offset={[12, 0]} opacity={1}>
-            <span className="map-route-tooltip">
-              <strong>Route B-12</strong>
-              <small>Next: Bagong Silangan · ETA 2 mins</small>
-            </span>
-          </Tooltip>
-        </CircleMarker>
+        {truck && (
+          <CircleMarker
+            center={truck.position}
+            radius={11}
+            pathOptions={{ color: '#ffffff', weight: 4, fillColor: '#075d35', fillOpacity: 1 }}
+          >
+            <Tooltip permanent direction="right" offset={[12, 0]} opacity={1}>
+              <span className="map-route-tooltip">
+                <strong>{truck.title}</strong>
+                <small>{truck.subtitle}</small>
+              </span>
+            </Tooltip>
+          </CircleMarker>
+        )}
         <ZoomControl position="topright" />
       </MapContainer>
       <a
