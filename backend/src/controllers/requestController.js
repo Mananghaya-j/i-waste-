@@ -10,6 +10,7 @@ function requireFile(req, field) {
 export async function create(kind, req, res) {
   if (kind === 'tree') requireFile(req, 'photo')
   if (kind === 'waterway') requireFile(req, 'photo')
+  if (kind === 'environmental' || kind === 'recyclables') requireFile(req, kind === 'recyclables' ? 'photos' : 'photo')
   const record = await requestService.createRequest(kind, req.body, req, collectFiles(req.files))
   res.status(201).json({ data: record })
 }
@@ -20,6 +21,10 @@ export async function list(kind, req, res) {
 
 export async function track(kind, req, res) {
   res.json({ data: await requestService.trackRequest(kind, req.params.referenceNo) })
+}
+
+export async function trackByReference(req, res) {
+  res.json({ data: await requestService.trackRequestByReference(req.params.referenceNo) })
 }
 
 export async function updateStatus(kind, req, res) {

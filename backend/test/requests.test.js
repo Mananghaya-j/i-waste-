@@ -1,10 +1,26 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { pickupSchema, treeSchema, environmentalReportSchema } from '../src/validators/requests.js'
+import { pickupSchema, treeSchema, environmentalReportSchema, recyclablesSchema, statusUpdateSchema, referenceSchema } from '../src/validations/requests.js'
 import { createReference } from '../src/utils/reference.js'
 import { renderCsv, renderPdf, renderXlsx } from '../src/services/reportService.js'
 import ExcelJS from 'exceljs'
 import { isAllowedOrigin } from '../src/utils/corsOrigin.js'
+import { updateProfileSchema } from '../src/validations/auth.js'
+import { publicTripListQuerySchema } from '../src/validations/trucks.js'
+
+test('profile updates accept name and optional contact details but reject empty changes', () => {
+  assert.deepEqual(updateProfileSchema.parse({ fullName: 'Resident Example', contactNumber: '' }), {
+    fullName: 'Resident Example',
+    contactNumber: null,
+  })
+  assert.equal(updateProfileSchema.safeParse({}).success, false)
+  assert.equal(updateProfileSchema.safeParse({ email: 'new@example.com' }).success, false)
+})
+
+test('public tracking filters validate truck ids and date ranges', () => {
+  assert.equal(publicTripListQuerySchema.safeParse({ truckId: 'not-a-uuid' }).success, false)
+  assert.equal(publicTripListQuerySchema.safeParse({ from: '2026-12-02', to: '2026-12-01' }).success, false)
+})
 
 test('pickup validates special waste subtype and requires a description for Others', () => {
   const valid = pickupSchema.safeParse({
@@ -59,8 +75,46 @@ test('anonymous environmental reports do not require reporter contact details', 
   assert.equal(result.data.anonymous, true)
 })
 
+test('identified environmental reports require phone or email contact', () => {
+  const base = {
+    anonymous: 'false',
+    type: 'MISSED_COLLECTION',
+    location: 'Rizal Street, Barangay Central',
+    description: 'Garbage was not collected on the scheduled pickup day.',
+  }
+  assert.equal(environmentalReportSchema.safeParse(base).success, false)
+  assert.equal(environmentalReportSchema.safeParse({ ...base, email: 'resident@example.com' }).success, true)
+})
+
+test('recyclables requests require a valid pickup address, fulfillment, and preferred date', () => {
+  const result = recyclablesSchema.safeParse({
+    contactNumber: '09171234567',
+    materialType: 'Plastic',
+    estimatedWeightKg: '4.5',
+    pickupAddress: 'Rizal Street, Barangay Central',
+    fulfillment: 'Pickup',
+    preferredDate: '2026-12-01',
+  })
+  assert.equal(result.success, true)
+  assert.equal(result.data.estimatedWeightKg, 4.5)
+})
+
+test('pickup measurement validation prevents component weights exceeding total kilograms', () => {
+  const result = statusUpdateSchema.safeParse({
+    status: 'COMPLETED',
+    measuredWasteKg: '10',
+    measuredRecyclablesKg: '7',
+    measuredCompostKg: '4',
+  })
+  assert.equal(result.success, false)
+})
+
 test('reference numbers include the type prefix and random suffix', () => {
-  assert.match(createReference('PU'), /^IW-PU-\d{6}-[A-F0-9]{12}$/)
+  const referenceNo = createReference('PU')
+  assert.match(referenceNo, /^IW-PU-\d{6}-[A-F0-9]{16}$/)
+  assert.equal(referenceSchema.safeParse({ referenceNo }).success, true)
+  assert.equal(referenceSchema.safeParse({ referenceNo: 'IW-PU-260101-INVALID' }).success, false)
+  assert.equal(referenceSchema.safeParse({ referenceNo: 'IW-RC-260101-ABCDEF123456' }).success, true)
 })
 
 test('CSV export neutralizes formula cells', () => {

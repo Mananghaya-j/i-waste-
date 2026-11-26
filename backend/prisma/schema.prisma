@@ -10,7 +10,7 @@ datasource db {
 enum UserRole {
   RESIDENT
   ADMIN
-  SUPERADMIN
+  SUPER_ADMIN
 }
 
 enum AccountStatus {
@@ -56,6 +56,17 @@ enum EnvironmentalReportType {
   OTHER
 }
 
+enum AnnouncementCategory {
+  COMMUNITY_EVENT
+  GREETING
+  ANNOUNCEMENT
+  ACTIVITY_SCHEDULE
+  MEMO
+  CITY_ORDINANCE
+  BARANGAY_ORDINANCE
+  RA_9003
+}
+
 enum NotificationType {
   REQUEST_UPDATE
   TRUCK_STATUS
@@ -70,26 +81,40 @@ enum TripStatus {
 }
 
 model User {
-  id                   String                @id @default(uuid()) @db.Uuid
-  fullName             String                @map("full_name") @db.VarChar(120)
-  email                String                @unique @db.VarChar(254)
-  contactNumber        String?               @map("contact_number") @db.VarChar(24)
-  passwordHash         String                @map("password_hash") @db.VarChar(255)
-  role                 UserRole              @default(RESIDENT)
-  status               AccountStatus         @default(ACTIVE)
-  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt            DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
-  refreshTokens        RefreshToken[]
-  resetTokens          PasswordResetToken[]
-  auditLogs            AuditLog[]            @relation("AuditActor")
-  assignedTrucks       Truck[]               @relation("TruckAdmin")
-  tripsCreated         TripTicket[]          @relation("TripCreator")
-  pickupRequests       PickupRequest[]       @relation("PickupRequester")
-  treeRequests         TreeRequest[]         @relation("TreeRequester")
-  waterwayRequests     WaterwayRequest[]     @relation("WaterwayRequester")
-  environmentalReports EnvironmentalReport[] @relation("ReportRequester")
-  notifications        Notification[]
-  uploadedAttachments  Attachment[]          @relation("AttachmentUploader")
+  id                      String                   @id @default(uuid()) @db.Uuid
+  fullName                String                   @map("full_name") @db.VarChar(120)
+  email                   String                   @unique @db.VarChar(254)
+  contactNumber           String?                  @map("contact_number") @db.VarChar(24)
+  profilePhotoStorageKey  String?                  @map("profile_photo_storage_key") @db.VarChar(80)
+  profilePhotoMimeType    String?                  @map("profile_photo_mime_type") @db.VarChar(32)
+  passwordHash            String                   @map("password_hash") @db.VarChar(255)
+  role                    UserRole                 @default(RESIDENT)
+  status                  AccountStatus            @default(ACTIVE)
+  emailVerifiedAt         DateTime?                @map("email_verified_at") @db.Timestamptz(3)
+  failedLoginAttempts     Int                      @default(0) @map("failed_login_attempts")
+  lockedUntil             DateTime?                @map("locked_until") @db.Timestamptz(3)
+  permissions             String[]                 @default([])
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  refreshTokens           RefreshToken[]
+  resetTokens             PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  auditLogs               AuditLog[]               @relation("AuditActor")
+  assignedTrucks          Truck[]                  @relation("TruckAdmin")
+  tripsCreated            TripTicket[]             @relation("TripCreator")
+  pickupRequests          PickupRequest[]          @relation("PickupRequester")
+  treeRequests            TreeRequest[]            @relation("TreeRequester")
+  waterwayRequests        WaterwayRequest[]        @relation("WaterwayRequester")
+  environmentalReports    EnvironmentalReport[]    @relation("ReportRequester")
+  assignedReports         EnvironmentalReport[]    @relation("ReportInvestigator")
+  recyclableRequests      RecyclablesRequest[]      @relation("RecyclablesRequester")
+  notifications           Notification[]
+  uploadedAttachments     Attachment[]             @relation("AttachmentUploader")
+  requestStatusChanges    RequestStatusHistory[]
+  junkshopReportsCreated  JunkshopMonthlyReport[]  @relation("JunkshopReportCreator")
+  announcements           Announcement[]
+  eventRsvps              EventRsvp[]
+  updatedSettings         SystemSetting[]
 
   @@index([role])
   @@index([status])
@@ -120,6 +145,19 @@ model PasswordResetToken {
 
   @@index([userId, expiresAt])
   @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  userId    String    @map("user_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("email_verification_tokens")
 }
 
 model AuditLog {
@@ -156,6 +194,8 @@ model Truck {
   admin          User?           @relation("TruckAdmin", fields: [adminId], references: [id], onDelete: SetNull)
   trips          TripTicket[]
   pickupRequests PickupRequest[]
+  recyclableRequests RecyclablesRequest[]
+  junkshopReports JunkshopMonthlyReport[]
 
   @@index([status])
   @@index([adminId])
@@ -237,6 +277,10 @@ model PickupRequest {
   specialWasteType  String?        @map("special_waste_type") @db.VarChar(80)
   otherWaste        String?        @map("other_waste") @db.VarChar(160)
   oilQuantityLiters Decimal?       @map("oil_quantity_liters") @db.Decimal(10, 2)
+  measuredWasteKg Decimal?         @map("measured_waste_kg") @db.Decimal(10, 2)
+  measuredRecyclablesKg Decimal?    @map("measured_recyclables_kg") @db.Decimal(10, 2)
+  measuredCompostKg Decimal?        @map("measured_compost_kg") @db.Decimal(10, 2)
+  completedAt       DateTime?      @map("completed_at") @db.Timestamptz(3)
   description       String?        @db.VarChar(1000)
   status            RequestStatus  @default(SUBMITTED)
   adminNotes        String?        @map("admin_notes") @db.VarChar(1000)
@@ -251,6 +295,7 @@ model PickupRequest {
   @@index([createdAt])
   @@index([requesterId, createdAt])
   @@index([assignedTruckId])
+  @@index([completedAt, assignedTruckId])
   @@map("pickup_requests")
 }
 
@@ -309,20 +354,107 @@ model EnvironmentalReport {
   anonymous          Boolean                 @default(false)
   fullName           String?                 @map("full_name") @db.VarChar(120)
   contactNumber      String?                 @map("contact_number") @db.VarChar(24)
+  email              String?                 @db.VarChar(254)
   type               EnvironmentalReportType
   location           String                  @db.VarChar(300)
   description        String                  @db.VarChar(1500)
   status             RequestStatus           @default(SUBMITTED)
   investigationNotes String?                 @map("investigation_notes") @db.VarChar(1500)
+  assignedInvestigatorId String?              @map("assigned_investigator_id") @db.Uuid
   createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
   requester          User?                   @relation("ReportRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  assignedInvestigator User?                 @relation("ReportInvestigator", fields: [assignedInvestigatorId], references: [id], onDelete: SetNull)
   attachments        Attachment[]
 
   @@index([type, status, createdAt])
   @@index([status, createdAt])
   @@index([createdAt])
+  @@index([assignedInvestigatorId, status])
   @@map("environmental_reports")
+}
+
+model RecyclablesRequest {
+  id                 String        @id @default(uuid()) @db.Uuid
+  referenceNo        String        @unique @map("reference_no") @db.VarChar(32)
+  requesterId        String?       @map("requester_id") @db.Uuid
+  fullName           String?       @map("full_name") @db.VarChar(120)
+  contactNumber      String        @map("contact_number") @db.VarChar(24)
+  materialType       String        @map("material_type") @db.VarChar(80)
+  estimatedWeightKg  Decimal?      @map("estimated_weight_kg") @db.Decimal(10, 2)
+  actualCollectedKg  Decimal?      @map("actual_collected_kg") @db.Decimal(10, 2)
+  pickupAddress      String        @map("pickup_address") @db.VarChar(300)
+  fulfillment        String        @db.VarChar(16)
+  preferredDate      DateTime      @map("preferred_date") @db.Date
+  status             RequestStatus @default(SUBMITTED)
+  adminNotes         String?       @map("admin_notes") @db.VarChar(1000)
+  assignedTruckId    String?       @map("assigned_truck_id") @db.Uuid
+  completedAt        DateTime?     @map("completed_at") @db.Timestamptz(3)
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  requester          User?         @relation("RecyclablesRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  assignedTruck      Truck?        @relation(fields: [assignedTruckId], references: [id], onDelete: SetNull)
+  attachments        Attachment[]
+
+  @@index([status, createdAt])
+  @@index([completedAt, assignedTruckId])
+  @@index([pickupAddress])
+  @@map("recyclables_requests")
+}
+
+model Junkshop {
+  id                  String                  @id @default(uuid()) @db.Uuid
+  name                String                  @db.VarChar(160)
+  accreditationNumber String                  @unique @map("accreditation_number") @db.VarChar(80)
+  address             String                  @db.VarChar(300)
+  contactPerson       String?                 @map("contact_person") @db.VarChar(120)
+  contactNumber       String?                 @map("contact_number") @db.VarChar(24)
+  isActive            Boolean                 @default(true) @map("is_active")
+  createdAt           DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  monthlyReports      JunkshopMonthlyReport[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("junkshops")
+}
+
+model JunkshopMonthlyReport {
+  id                String                  @id @default(uuid()) @db.Uuid
+  referenceNo       String                  @unique @map("reference_no") @db.VarChar(32)
+  junkshopId        String                  @map("junkshop_id") @db.Uuid
+  reportMonth       DateTime                @map("report_month") @db.Date
+  truckId           String?                 @map("truck_id") @db.Uuid
+  householdAddress String?                 @map("household_address") @db.VarChar(300)
+  notes             String?                 @db.VarChar(1000)
+  createdById       String                  @map("created_by_id") @db.Uuid
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  junkshop          Junkshop                @relation(fields: [junkshopId], references: [id], onDelete: Restrict)
+  truck             Truck?                  @relation(fields: [truckId], references: [id], onDelete: SetNull)
+  createdBy         User                    @relation("JunkshopReportCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  materials         JunkshopMaterialEntry[]
+  attachments       Attachment[]
+
+  @@index([reportMonth, truckId])
+  @@index([junkshopId, reportMonth])
+  @@index([householdAddress])
+  @@map("junkshop_monthly_reports")
+}
+
+model JunkshopMaterialEntry {
+  id            String               @id @default(uuid()) @db.Uuid
+  reportId      String               @map("report_id") @db.Uuid
+  category      String               @db.VarChar(40)
+  otherMaterial String?              @map("other_material") @db.VarChar(80)
+  quantity      Decimal              @db.Decimal(10, 2)
+  unit          String               @db.VarChar(20)
+  otherUnit     String?              @map("other_unit") @db.VarChar(20)
+  weightKg      Decimal              @map("weight_kg") @db.Decimal(10, 2)
+  volumeM3      Decimal              @map("volume_m3") @db.Decimal(10, 3)
+  report        JunkshopMonthlyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, category])
+  @@map("junkshop_material_entries")
 }
 
 model Attachment {
@@ -337,17 +469,23 @@ model Attachment {
   treeRequestId         String?              @map("tree_request_id") @db.Uuid
   waterwayRequestId     String?              @map("waterway_request_id") @db.Uuid
   environmentalReportId String?              @map("environmental_report_id") @db.Uuid
+  recyclablesRequestId  String?              @map("recyclables_request_id") @db.Uuid
+  junkshopReportId      String?              @map("junkshop_report_id") @db.Uuid
   createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   uploadedBy            User?                @relation("AttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
   pickupRequest         PickupRequest?       @relation(fields: [pickupRequestId], references: [id], onDelete: Cascade)
   treeRequest           TreeRequest?         @relation(fields: [treeRequestId], references: [id], onDelete: Cascade)
   waterwayRequest       WaterwayRequest?     @relation(fields: [waterwayRequestId], references: [id], onDelete: Cascade)
   environmentalReport   EnvironmentalReport? @relation(fields: [environmentalReportId], references: [id], onDelete: Cascade)
+  recyclablesRequest    RecyclablesRequest?  @relation(fields: [recyclablesRequestId], references: [id], onDelete: Cascade)
+  junkshopReport        JunkshopMonthlyReport? @relation(fields: [junkshopReportId], references: [id], onDelete: Cascade)
 
   @@index([pickupRequestId])
   @@index([treeRequestId])
   @@index([waterwayRequestId])
   @@index([environmentalReportId])
+  @@index([recyclablesRequestId])
+  @@index([junkshopReportId])
   @@map("attachments")
 }
 
@@ -366,4 +504,60 @@ model Notification {
   @@index([userId, readAt, createdAt])
   @@index([createdAt])
   @@map("notifications")
+}
+
+model RequestStatusHistory {
+  id          String         @id @default(uuid()) @db.Uuid
+  requestKind String         @map("request_kind") @db.VarChar(32)
+  referenceNo String         @map("reference_no") @db.VarChar(32)
+  fromStatus  RequestStatus? @map("from_status")
+  toStatus    RequestStatus  @map("to_status")
+  actorId     String?        @map("actor_id") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  actor       User?          @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([referenceNo, createdAt])
+  @@map("request_status_history")
+}
+
+model Announcement {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String    @db.VarChar(160)
+  body        String    @db.VarChar(4000)
+  category    AnnouncementCategory @default(ANNOUNCEMENT)
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(3)
+  startsAt    DateTime? @map("starts_at") @db.Timestamptz(3)
+  location    String?   @db.VarChar(300)
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  rsvps       EventRsvp[]
+
+  @@index([publishedAt, createdAt])
+  @@index([category, startsAt])
+  @@map("announcements")
+}
+
+model EventRsvp {
+  id             String       @id @default(uuid()) @db.Uuid
+  announcementId String       @map("announcement_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId, createdAt])
+  @@map("event_rsvps")
+}
+
+model SystemSetting {
+  key         String   @id @db.VarChar(80)
+  value       Json
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("system_settings")
 }

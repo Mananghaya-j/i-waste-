@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken'
-import { prisma } from '../config/prisma.js'
+import { prisma } from '../database/prisma.js'
 import { env } from '../config/env.js'
 import { AppError } from '../utils/errors.js'
 

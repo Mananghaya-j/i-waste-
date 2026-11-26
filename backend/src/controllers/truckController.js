@@ -13,11 +13,15 @@ export async function updateTruck(req, res) {
 }
 
 export async function lookupQr(req, res) {
-  res.json({ data: await truckService.lookupQr(req.params.code) })
+  res.json({ data: await truckService.lookupQr(req.params.code, req) })
 }
 
 export async function routes(req, res) {
   res.json({ data: await truckService.listRoutes() })
+}
+
+export async function manageRoutes(req, res) {
+  res.json({ data: await truckService.listRoutes({ includeInactive: true }) })
 }
 
 export async function saveRoute(req, res) {
@@ -42,4 +46,8 @@ export async function getTrip(req, res) {
 
 export async function listTrips(req, res) {
   res.json(await truckService.listTrips(req))
+}
+
+export async function listPublicTrips(req, res) {
+  res.json({ data: await truckService.listPublicTrips(req) })
 }

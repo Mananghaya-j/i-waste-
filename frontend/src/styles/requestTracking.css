@@ -1,0 +1,48 @@
+.request-tracking-page {
+  display: grid;
+  min-height: calc(100vh - 62px);
+  place-items: start center;
+  padding: clamp(24px, 6vw, 64px) 18px;
+  color: #173d2b;
+  background: linear-gradient(145deg, #f8fcf5, #eaf4e5);
+}
+
+.request-tracking-card {
+  width: min(100%, 700px);
+  padding: clamp(22px, 5vw, 38px);
+  border: 1px solid #d5e6ce;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 7px 22px rgba(39, 93, 45, .08);
+}
+
+.request-tracking-eyebrow { margin: 0 0 7px; color: #398043; font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.request-tracking-card h1 { margin: 0; color: #183e27; font-size: clamp(25px, 5vw, 34px); }
+.request-tracking-card > p:not(.request-tracking-eyebrow) { color: #5a765e; font-size: 13px; line-height: 1.6; }
+.request-tracking-card form { display: grid; gap: 9px; margin-top: 22px; }
+.request-tracking-card label { color: #294b36; font-size: 12px; font-weight: 600; }
+.request-tracking-card input { min-height: 44px; padding: 10px 12px; border: 1px solid #d6e2d9; border-radius: 10px; color: #183e2a; font: inherit; }
+.request-tracking-card input:focus { border-color: #398758; outline: 3px solid rgba(57, 135, 88, .14); }
+.request-tracking-card button { min-height: 44px; margin-top: 5px; border: 0; border-radius: 10px; color: #fff; background: #08703a; font-size: 13px; font-weight: 700; cursor: pointer; }
+.request-tracking-card button:disabled { opacity: .7; cursor: wait; }
+.request-tracking-error { margin: 0; color: #a52c2c; font-size: 12px; }
+.request-tracking-result { margin-top: 28px; padding-top: 24px; border-top: 1px solid #e3eee0; }
+.request-tracking-summary { display: flex; flex-wrap: wrap; gap: 30px; }
+.request-tracking-summary div { display: grid; gap: 5px; }
+.request-tracking-summary small { color: #718574; font-size: 9px; font-weight: 700; letter-spacing: .1em; }
+.request-tracking-summary strong { color: #12663a; font-size: 15px; }
+.request-tracking-result h2 { margin: 25px 0 17px; color: #20492c; font-size: 17px; }
+.request-timeline { display: grid; margin: 0; padding: 0; list-style: none; }
+.request-timeline li { position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 12px; min-height: 56px; }
+.request-timeline li:not(:last-child)::after { position: absolute; top: 12px; bottom: 0; left: 5px; width: 2px; content: ''; background: #d7e5d3; }
+.request-timeline li > i { z-index: 1; width: 12px; height: 12px; border: 2px solid #258044; border-radius: 50%; background: #fff; }
+.request-timeline li > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; padding-bottom: 15px; }
+.request-timeline strong { color: #315943; font-size: 12px; }
+.request-timeline time { color: #718574; font-size: 11px; }
+.request-tracking-private { margin: 7px 0 0; color: #718574; font-size: 10px; }
+
+@media (max-width: 520px) {
+  .request-tracking-page { min-height: calc(100vh - 56px); padding: 20px 12px; }
+  .request-tracking-card { padding: 22px 18px; }
+  .request-timeline li > div { display: grid; }
+}

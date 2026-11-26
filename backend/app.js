@@ -14,11 +14,21 @@ import adminRoutes from './src/routes/adminRoutes.js'
 import notificationRoutes from './src/routes/notificationRoutes.js'
 import attachmentRoutes from './src/routes/attachmentRoutes.js'
 import reportRoutes from './src/routes/reportRoutes.js'
+import announcementRoutes from './src/routes/announcementRoutes.js'
+import requestTrackingRoutes from './src/routes/requestTrackingRoutes.js'
+import publicRoutes from './src/routes/publicRoutes.js'
+import junkshopRoutes from './src/routes/junkshopRoutes.js'
 
 const app = express()
 
 app.disable('x-powered-by')
 if (env.TRUST_PROXY_HOPS > 0) app.set('trust proxy', env.TRUST_PROXY_HOPS)
+app.use((req, res, next) => {
+  if (env.NODE_ENV === 'production' && !req.secure) {
+    return next(new AppError(400, 'HTTPS is required.', 'HTTPS_REQUIRED'))
+  }
+  return next()
+})
 app.use(helmet())
 app.use(cors({
   origin(origin, callback) {
@@ -39,6 +49,9 @@ app.use('/api', rateLimit({
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }))
 app.use('/api/auth', authRoutes)
+app.use('/api/public', publicRoutes)
+app.use('/api/requests', requestTrackingRoutes)
+app.use('/api/announcements', announcementRoutes)
 app.use('/api/trucks', truckRoutes)
 app.use('/api/routes', routesRouter)
 app.use('/api/trips', tripsRouter)
@@ -46,9 +59,12 @@ app.use('/api/pickup-requests', createRequestRouter('pickup-requests'))
 app.use('/api/tree-requests', createRequestRouter('tree-requests'))
 app.use('/api/waterway-requests', createRequestRouter('waterway-requests'))
 app.use('/api/environmental-reports', createRequestRouter('environmental-reports'))
+app.use('/api/recyclables-requests', createRequestRouter('recyclables-requests'))
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/attachments', attachmentRoutes)
 app.use('/api/reports', reportRoutes)
+app.use('/api/junkshops', junkshopRoutes.shops)
+app.use('/api/junkshop-reports', junkshopRoutes.reports)
 app.use('/api', adminRoutes)
 app.use(notFoundHandler)
 app.use(errorHandler)

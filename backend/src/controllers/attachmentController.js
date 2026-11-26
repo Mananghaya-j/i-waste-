@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { prisma } from '../config/prisma.js'
+import { prisma } from '../database/prisma.js'
 import { uploadDirectory } from '../utils/attachments.js'
 import { AppError, notFound } from '../utils/errors.js'
 import { writeAudit } from '../utils/audit.js'
@@ -12,15 +12,23 @@ export async function download(req, res, next) {
       treeRequest: { select: { requesterId: true } },
       waterwayRequest: { select: { requesterId: true } },
       environmentalReport: { select: { requesterId: true, anonymous: true } },
+      recyclablesRequest: { select: { requesterId: true } },
+      junkshopReport: { select: { id: true } },
     },
   })
   if (!attachment) throw notFound('Attachment not found.')
-  const admin = ['ADMIN', 'SUPERADMIN'].includes(req.user.role)
   const ownerId = attachment.pickupRequest?.requesterId
     || attachment.treeRequest?.requesterId
     || attachment.waterwayRequest?.requesterId
     || attachment.environmentalReport?.requesterId
-  if (!admin && ownerId !== req.user.id) throw new AppError(403, 'You cannot access this attachment.', 'FORBIDDEN')
+    || attachment.recyclablesRequest?.requesterId
+  const reportAttachment = Boolean(attachment.environmentalReport || attachment.junkshopReport)
+  const permission = reportAttachment ? 'reports:manage' : 'requests:manage'
+  const administratorAccess = req.user.role === 'SUPER_ADMIN' && reportAttachment ||
+    req.user.role === 'ADMIN' && req.user.permissions.includes(permission)
+  if (!administratorAccess && ownerId !== req.user.id) {
+    throw new AppError(403, 'You cannot access this attachment.', 'FORBIDDEN')
+  }
 
   await prisma.$transaction(async (tx) => {
     await writeAudit(tx, req, { action: 'ATTACHMENT_DOWNLOADED', entityType: 'Attachment', entityId: attachment.id })

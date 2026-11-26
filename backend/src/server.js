@@ -1,13 +1,13 @@
 import app from '../app.js'
 import { env } from './config/env.js'
-import { prisma } from './config/prisma.js'
+import { prisma } from './database/prisma.js'
 
 let server
 
 async function start() {
   await prisma.$connect()
   server = app.listen(env.PORT, () => {
-    console.log(`i-WASTE API listening on port ${env.PORT}`)
+    console.log(`i-WASTE API listening at ${env.SERVER_URL || `port ${env.PORT}`}`)
   })
 }
 
@@ -23,7 +23,7 @@ process.once('SIGINT', () => shutdown('SIGINT').then(() => process.exit(0)))
 process.once('SIGTERM', () => shutdown('SIGTERM').then(() => process.exit(0)))
 
 start().catch(async (error) => {
-  console.error('Unable to start i-WASTE API:', error.message)
+  console.error('Unable to start i-WASTE API.', { name: error.name, code: error.code })
   await prisma.$disconnect()
   process.exitCode = 1
 })

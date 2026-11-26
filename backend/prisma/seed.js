@@ -18,15 +18,16 @@ async function seed() {
       fullName: 'System Superadmin',
       email,
       passwordHash,
-      role: 'SUPERADMIN',
+      role: 'SUPER_ADMIN',
       status: 'ACTIVE',
+      emailVerifiedAt: new Date(),
     },
   })
 }
 
 seed()
   .catch((error) => {
-    console.error('Database seed failed:', error.message)
+    console.error('Database seed failed.', { name: error.name, code: error.code })
     process.exitCode = 1
   })
   .finally(() => prisma.$disconnect())

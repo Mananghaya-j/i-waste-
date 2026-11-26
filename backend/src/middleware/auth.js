@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken'
-import { prisma } from '../config/prisma.js'
+import { prisma } from '../database/prisma.js'
 import { env } from '../config/env.js'
 import { AppError } from '../utils/errors.js'
 
@@ -17,7 +17,7 @@ export async function authenticate(req, res, next) {
 
   const user = await prisma.user.findUnique({
     where: { id: payload.sub },
-    select: { id: true, role: true, status: true },
+    select: { id: true, role: true, status: true, permissions: true },
   })
   if (!user || user.status !== 'ACTIVE') return next(new AppError(401, 'Authentication required.', 'UNAUTHENTICATED'))
   req.user = user
@@ -27,6 +27,25 @@ export async function authenticate(req, res, next) {
 export function authorize(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
+      return next(new AppError(403, 'You do not have permission to perform this action.', 'FORBIDDEN'))
+    }
+    return next()
+  }
+}
+
+export function requirePermission(permission) {
+  return (req, res, next) => {
+    if (!req.user || req.user.role === 'SUPER_ADMIN' || !req.user.permissions.includes(permission)) {
+      return next(new AppError(403, 'You do not have permission to perform this action.', 'FORBIDDEN'))
+    }
+    return next()
+  }
+}
+
+export function requirePermissionOrSuperAdmin(permission) {
+  return (req, res, next) => {
+    if (!req.user || !['ADMIN', 'SUPER_ADMIN'].includes(req.user.role) ||
+      (req.user.role !== 'SUPER_ADMIN' && !req.user.permissions.includes(permission))) {
       return next(new AppError(403, 'You do not have permission to perform this action.', 'FORBIDDEN'))
     }
     return next()

@@ -34,6 +34,6 @@ export function errorHandler(error, req, res, next) {
     message = error.code === 'LIMIT_FILE_SIZE' ? 'Uploaded file exceeds the size limit.' : 'Invalid upload.'
   }
 
-  if (status >= 500) console.error({ message: error.message, path: req.originalUrl })
+  if (status >= 500) console.error({ name: error.name, code: error.code, path: req.path })
   res.status(status).json({ error: { code, message } })
 }

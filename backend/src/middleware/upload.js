@@ -1,15 +1,25 @@
 import multer from 'multer'
+import path from 'node:path'
 import { env } from '../config/env.js'
 import { AppError } from '../utils/errors.js'
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+const extensionByMime = new Map([
+  ['image/jpeg', new Set(['.jpg', '.jpeg'])],
+  ['image/png', new Set(['.png'])],
+  ['image/webp', new Set(['.webp'])],
+  ['application/pdf', new Set(['.pdf'])],
+])
 
 export const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: env.MAX_UPLOAD_BYTES, files: 5 },
   fileFilter(req, file, callback) {
-    const isPdfField = file.fieldname === 'denrDocument'
-    if (!allowedMimeTypes.has(file.mimetype) || (file.mimetype === 'application/pdf' && !isPdfField)) {
+    const isPdfField = ['denrDocument', 'supportingDocuments'].includes(file.fieldname)
+    const extension = path.extname(file.originalname).toLowerCase()
+    if (!allowedMimeTypes.has(file.mimetype)
+      || (file.mimetype === 'application/pdf' && !isPdfField)
+      || !extensionByMime.get(file.mimetype)?.has(extension)) {
       callback(new AppError(400, 'Only JPG, PNG, WebP, or PDF attachments are accepted.', 'INVALID_FILE_TYPE'))
       return
     }

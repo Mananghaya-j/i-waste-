@@ -1,4 +1,4 @@
-import { prisma } from '../config/prisma.js'
+import { prisma } from '../database/prisma.js'
 import { createReference } from '../utils/reference.js'
 import { writeAudit } from '../utils/audit.js'
 import { persistFiles, removeFiles } from '../utils/attachments.js'
@@ -10,6 +10,7 @@ const configurations = {
   tree: { model: 'treeRequest', prefix: 'TR', entityType: 'TreeRequest', attachmentField: 'treeRequestId' },
   waterway: { model: 'waterwayRequest', prefix: 'WW', entityType: 'WaterwayRequest', attachmentField: 'waterwayRequestId' },
   environmental: { model: 'environmentalReport', prefix: 'ER', entityType: 'EnvironmentalReport', attachmentField: 'environmentalReportId' },
+  recyclables: { model: 'recyclablesRequest', prefix: 'RC', entityType: 'RecyclablesRequest', attachmentField: 'recyclablesRequestId' },
 }
 
 const detailInclude = { attachments: { select: { id: true, originalName: true, mimeType: true, sizeBytes: true, purpose: true, createdAt: true } } }
@@ -20,7 +21,7 @@ function publicTracking(record) {
     status: record.status,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
-    attachments: record.attachments,
+    statusHistory: record.statusHistory.map(({ fromStatus, toStatus, createdAt }) => ({ fromStatus, toStatus, createdAt })),
   }
 }
 
@@ -47,10 +48,11 @@ export async function createRequest(kind, input, req, files = []) {
         if (input.category !== 'COOKING_OIL') data.oilQuantityLiters = null
         if (!data.email) data.email = null
       }
-      if (kind === 'environmental' && input.anonymous) {
-        data.fullName = null
-        data.contactNumber = null
-        data.requesterId = null
+      if (kind === 'environmental') {
+        data.fullName = input.anonymous ? null : data.fullName || null
+        data.contactNumber = input.anonymous ? null : data.contactNumber || null
+        data.email = input.anonymous ? null : data.email || null
+        if (input.anonymous) data.requesterId = null
       }
 
       const record = await tx[config.model].create({
@@ -60,6 +62,9 @@ export async function createRequest(kind, input, req, files = []) {
         },
         include: detailInclude,
       })
+      await tx.requestStatusHistory.create({
+        data: { requestKind: kind, referenceNo: record.referenceNo, toStatus: record.status },
+      })
       await writeAudit(tx, req, {
         actorId: req.user?.id,
         action: 'REQUEST_CREATED',
@@ -68,7 +73,7 @@ export async function createRequest(kind, input, req, files = []) {
         metadata: { referenceNo: record.referenceNo },
       })
       const admins = await tx.user.findMany({
-          where: { role: { in: ['ADMIN', 'SUPERADMIN'] }, status: 'ACTIVE' },
+          where: { role: 'ADMIN', status: 'ACTIVE' },
           select: { id: true },
         })
       if (admins.length) {
@@ -96,11 +101,17 @@ export async function listRequests(kind, req) {
   const { skip, take, page, limit } = pagination(req.query)
   const where = {}
   if (req.query.status) where.status = req.query.status
-  if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) where.requesterId = req.user.id
+  const managementPermission = kind === 'environmental' ? 'reports:manage' : 'requests:manage'
+  const canManage = req.user.role !== 'SUPER_ADMIN' && req.user.permissions.includes(managementPermission)
+  if (!canManage) where.requesterId = req.user.id
   const [data, total] = await prisma.$transaction([
     prisma[config.model].findMany({
       where, skip, take, orderBy: { createdAt: 'desc' },
-      include: { attachments: { select: { id: true, mimeType: true, sizeBytes: true, purpose: true } } },
+      include: {
+        attachments: { select: { id: true, mimeType: true, sizeBytes: true, purpose: true } },
+        ...(kind === 'environmental' ? { assignedInvestigator: { select: { id: true, fullName: true } } } : {}),
+        ...(kind === 'recyclables' ? { assignedTruck: { select: { id: true, truckId: true } } } : {}),
+      },
     }),
     prisma[config.model].count({ where }),
   ])
@@ -109,9 +120,21 @@ export async function listRequests(kind, req) {
 
 export async function trackRequest(kind, referenceNo) {
   const config = configurations[kind]
-  const record = await prisma[config.model].findUnique({ where: { referenceNo }, include: detailInclude })
+  const record = await prisma[config.model].findUnique({ where: { referenceNo } })
   if (!record) throw notFound('Request reference was not found.')
-  return publicTracking(record)
+  const statusHistory = await prisma.requestStatusHistory.findMany({
+    where: { referenceNo },
+    orderBy: { createdAt: 'asc' },
+    select: { fromStatus: true, toStatus: true, createdAt: true },
+  })
+  return publicTracking({ ...record, statusHistory })
+}
+
+export async function trackRequestByReference(referenceNo) {
+  const prefix = referenceNo.split('-')[1]
+  const kind = { PU: 'pickup', TR: 'tree', WW: 'waterway', ER: 'environmental', RC: 'recyclables' }[prefix]
+  if (!kind) throw notFound('Request reference was not found.')
+  return trackRequest(kind, referenceNo)
 }
 
 export async function updateRequestStatus(kind, id, input, req, files = []) {
@@ -130,13 +153,51 @@ export async function updateRequestStatus(kind, id, input, req, files = []) {
   if (current.status !== nextStatus && !transitions[current.status].includes(nextStatus)) {
     throw new AppError(409, `Cannot change request from ${current.status} to ${nextStatus}.`, 'INVALID_STATUS_TRANSITION')
   }
-  if (input.assignedTruckId && kind !== 'pickup') {
-    throw new AppError(400, 'Truck assignment is supported only for pickup requests.', 'INVALID_ASSIGNMENT')
+  if (input.assignedTruckId && !['pickup', 'recyclables'].includes(kind)) {
+    throw new AppError(400, 'Truck assignment is supported only for collection requests.', 'INVALID_ASSIGNMENT')
   }
   if (input.assignedTruckId) {
     const truck = await prisma.truck.findUnique({ where: { id: input.assignedTruckId }, select: { status: true } })
     if (!truck) throw new AppError(400, 'Assigned truck was not found.', 'INVALID_ASSIGNMENT')
     if (truck.status === 'MAINTENANCE') throw new AppError(409, 'Truck is under maintenance.', 'TRUCK_UNAVAILABLE')
+  }
+  if (input.assignedInvestigatorId && kind !== 'environmental') {
+    throw new AppError(400, 'Investigator assignment is supported only for environmental reports.', 'INVALID_ASSIGNMENT')
+  }
+  if (input.assignedInvestigatorId) {
+    const investigator = await prisma.user.findFirst({
+      where: { id: input.assignedInvestigatorId, role: 'ADMIN', status: 'ACTIVE' },
+      select: { id: true },
+    })
+    if (!investigator) throw new AppError(400, 'Investigator must be an active admin.', 'INVALID_ASSIGNMENT')
+  }
+  if (nextStatus === 'COMPLETED' && kind === 'environmental') {
+    const assignedInvestigatorId = input.assignedInvestigatorId || current.assignedInvestigatorId
+    const activeInvestigator = assignedInvestigatorId && await prisma.user.findFirst({
+      where: { id: assignedInvestigatorId, role: 'ADMIN', status: 'ACTIVE' },
+      select: { id: true },
+    })
+    if (!activeInvestigator) throw new AppError(409, 'Assign an active investigator before completing this report.', 'INVESTIGATOR_REQUIRED')
+  }
+  if (nextStatus === 'COMPLETED' && kind === 'pickup' &&
+    !(input.assignedTruckId || current.assignedTruckId)) {
+    throw new AppError(409, 'Assign a truck before completing this pickup.', 'TRUCK_ASSIGNMENT_REQUIRED')
+  }
+  if (nextStatus === 'COMPLETED' && kind === 'recyclables' && current.fulfillment === 'Pickup' &&
+    !(input.assignedTruckId || current.assignedTruckId)) {
+    throw new AppError(409, 'Assign a truck before completing this pickup.', 'TRUCK_ASSIGNMENT_REQUIRED')
+  }
+  if (current.status !== 'COMPLETED' && nextStatus === 'COMPLETED' && kind === 'pickup' && input.measuredWasteKg === undefined) {
+    throw new AppError(400, 'Enter the measured total collected weight in kilograms before completing this request.', 'MEASUREMENT_REQUIRED')
+  }
+  if (current.status !== 'COMPLETED' && nextStatus === 'COMPLETED' && kind === 'recyclables' && input.actualCollectedKg === undefined) {
+    throw new AppError(400, 'Enter the actual collected weight in kilograms before completing this request.', 'MEASUREMENT_REQUIRED')
+  }
+  const measuredRecyclablesKg = input.measuredRecyclablesKg ?? 0
+  const measuredCompostKg = input.measuredCompostKg ?? 0
+  if (kind === 'pickup' && input.measuredWasteKg !== undefined &&
+    measuredRecyclablesKg + measuredCompostKg > input.measuredWasteKg) {
+    throw new AppError(400, 'Recyclable and compost weights cannot exceed total collected weight.', 'INVALID_MEASUREMENT')
   }
 
   const persisted = await persistFiles(files)
@@ -145,22 +206,53 @@ export async function updateRequestStatus(kind, id, input, req, files = []) {
       const updateData = {
         status: nextStatus,
         adminNotes: input.adminNotes,
-        ...(kind === 'pickup' && input.assignedTruckId ? { assignedTruckId: input.assignedTruckId } : {}),
+        ...(['pickup', 'recyclables'].includes(kind) && input.assignedTruckId ? { assignedTruckId: input.assignedTruckId } : {}),
         ...(kind === 'environmental' && input.investigationNotes ? { investigationNotes: input.investigationNotes } : {}),
+        ...(kind === 'environmental' && input.assignedInvestigatorId !== undefined ? { assignedInvestigatorId: input.assignedInvestigatorId } : {}),
+        ...(kind === 'pickup' && input.measuredWasteKg !== undefined ? {
+          measuredWasteKg: input.measuredWasteKg,
+          measuredRecyclablesKg,
+          measuredCompostKg,
+        } : {}),
+        ...(kind === 'recyclables' && input.actualCollectedKg !== undefined ? { actualCollectedKg: input.actualCollectedKg } : {}),
+        ...(nextStatus === 'COMPLETED' && current.status !== 'COMPLETED' && ['pickup', 'recyclables'].includes(kind) ? { completedAt: new Date() } : {}),
       }
-      const record = await tx[config.model].update({
-        where: { id },
-        data: {
-          ...updateData,
-          attachments: persisted.length ? { create: persisted.map((file) => ({ ...file, uploadedById: req.user.id })) } : undefined,
-        },
-        include: detailInclude,
+      const updated = await tx[config.model].updateMany({
+        where: { id, status: current.status },
+        data: updateData,
       })
+      if (updated.count !== 1) throw new AppError(409, 'Request was changed by another administrator. Reload and retry.', 'REQUEST_CHANGED')
+      if (persisted.length) {
+        await tx.attachment.createMany({
+          data: persisted.map((file) => ({
+            ...file,
+            uploadedById: req.user.id,
+            [config.attachmentField]: id,
+          })),
+        })
+      }
+      const record = await tx[config.model].findUnique({ where: { id }, include: detailInclude })
+      if (current.status !== nextStatus) {
+        await tx.requestStatusHistory.create({
+          data: {
+            requestKind: kind,
+            referenceNo: current.referenceNo,
+            fromStatus: current.status,
+            toStatus: nextStatus,
+            actorId: req.user.id,
+          },
+        })
+      }
       await writeAudit(tx, req, {
-        action: 'REQUEST_STATUS_UPDATED',
+        action: kind === 'environmental' && input.assignedInvestigatorId !== undefined ? 'REPORT_UPDATED' : 'REQUEST_STATUS_UPDATED',
         entityType: config.entityType,
         entityId: id,
-        metadata: { from: current.status, to: nextStatus, referenceNo: current.referenceNo },
+        metadata: {
+          from: current.status,
+          to: nextStatus,
+          referenceNo: current.referenceNo,
+          ...(input.assignedInvestigatorId !== undefined ? { assignedInvestigatorId: input.assignedInvestigatorId } : {}),
+        },
       })
       if (current.requesterId) {
         await tx.notification.create({

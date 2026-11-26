@@ -1,4 +1,4 @@
-import { prisma } from '../config/prisma.js'
+import { prisma } from '../database/prisma.js'
 import { pagination, paginated } from '../utils/pagination.js'
 import { notFound } from '../utils/errors.js'
 

@@ -1,17 +1,18 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import * as controller from '../controllers/adminController.js'
-import { authenticate, authorize } from '../middleware/auth.js'
+import { authenticate, authorize, requirePermission } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import { paginationSchema } from '../utils/pagination.js'
-import { adminCreateSchema } from '../validators/auth.js'
-import { adminUpdateSchema } from '../validators/admin.js'
 
 const router = Router()
 const idParams = z.object({ id: z.string().uuid() })
-router.use(authenticate, authorize('ADMIN', 'SUPERADMIN'))
-router.get('/dashboard/stats', controller.stats)
-router.get('/admins', authorize('SUPERADMIN'), validate({ query: paginationSchema }), controller.listAdmins)
-router.post('/admins', authorize('SUPERADMIN'), validate({ body: adminCreateSchema }), controller.createAdmin)
-router.patch('/admins/:id', authorize('SUPERADMIN'), validate({ params: idParams, body: adminUpdateSchema }), controller.updateAdmin)
+const roleSchema = z.object({ role: z.enum(['RESIDENT', 'ADMIN']) }).strict()
+
+router.use(authenticate)
+router.get('/dashboard/stats', authorize('ADMIN', 'SUPER_ADMIN'), controller.stats)
+router.get('/investigators', requirePermission('reports:manage'), controller.listInvestigators)
+router.get('/users/roles', authorize('SUPER_ADMIN'), validate({ query: paginationSchema }), controller.listRoleUsers)
+router.patch('/users/:id/role', authorize('SUPER_ADMIN'), validate({ params: idParams, body: roleSchema }), controller.updateUserRole)
+
 export default router
